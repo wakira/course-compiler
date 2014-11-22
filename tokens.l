@@ -44,7 +44,9 @@ extern "C" int yywrap() {  }
 "*"						{ return MUL; }
 "/"						{ return DIV; }
 "("						{ return LPAR; }	
-")"						{ return RPAR; }	
+")"						{ return RPAR; }
+"["                                             { return LSQR; }
+"]"                                             { return RSQR; }
 "=="					{ return EQ; }
 "!="					{ return NE; }
 "<"						{ return LT; }
@@ -54,5 +56,8 @@ extern "C" int yywrap() {  }
 ";"						{ return SEMICOLON; }
 ","						{ return COMMA; }
 ":="					{ return ASSIGN; }
-
+"."                                     { return DOT; }
+"and"                                   { return AND; }
+"&&"                                    { return AND; }
+"||"                                    { return OR; }
 %%

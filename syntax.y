@@ -211,7 +211,201 @@ assignment:
 	;
 
 expression:
-	LPAR expression RPAR { $$ = $2 }
-	| INT
+       cond_or { $$ = $1 };
+cond_or:
+       cond_and
+       {
+            $$ = new BinaryOperation();
+            $$->a = $1;
+            $$->b = nullptr;
+            $$->op = BinaryOperation::NONE;
+       }
+       | cond_and EQ cond_or
+       {
+           $$ = new BinaryOperation();
+           $$->a = $1;
+           $$->b = $3;
+           $$->op = BinaryOperation::O;
+       };
+cond_and:
+       eq_op
+       {
+            $$ = new BinaryOperation();
+            $$->a = $1;
+            $$->b = nullptr;
+            $$->op = BinaryOperation::NONE;
+       }
+       | eq_op EQ cond_and
+       {
+           $$ = new BinaryOperation();
+           $$->a = $1;
+           $$->b = $3;
+           $$->op = BinaryOperation::A;
+       };
+eq_op:
+       rel_op
+       {
+            $$ = new BinaryOperation();
+            $$->a = $1;
+            $$->b = nullptr;
+            $$->op = BinaryOperation::NONE;
+       }
+       | rel_op EQ eq_op
+       {
+           $$ = new BinaryOperation();
+           $$->a = $1;
+           $$->b = $3;
+           $$->op = BinaryOperation::E;
+       }
+       | rel_op NE eq_op
+       {
+           $$ = new BinaryOperation();
+           $$->a = $1;
+           $$->b = $3;
+           $$->op = BinaryOperation::NE;
+       };
+rel_op:
+        add_op
+        {
+            $$ = new BinaryOperation();
+            $$->a = $1;
+            $$->b = nullptr;
+            $$->op = BinaryOperation::NONE;
+        }
+        | add_op LT rel_op
+        {
+            $$ = new BinaryOperation();
+            $$->a = $1;
+            $$->b = $3;
+            $$->op = BinaryOperation::L;
+        }
+        | add_op LE rel_op
+        {
+            $$ = new BinaryOperation();
+            $$->a = $1;
+            $$->b = $3;
+            $$->op = BinaryOperation::LE;
+        }
+        | add_op GT rel_op
+        {
+            $$ = new BinaryOperation();
+            $$->a = $1;
+            $$->b = $3;
+            $$->op = BinaryOperation::G;
+        }
+        | add_op GE rel_op
+        {
+            $$ = new BinaryOperation();
+            $$->a = $1;
+            $$->b = $3;
+            $$->op = BinaryOperation::GE;
+        };
+add_op:
+        multi_op
+        {
+            $$ = new BinaryOperation();
+            $$->a = $1;
+            $$->b = nullptr;
+            $$->op = BinaryOperation::NONE;
+        }
+        | multi_op PLUS add_op
+        {
+            $$ = new BinaryOperation();
+            $$->a = $1;
+            $$->b = $3;
+            $$->op = BinaryOperation::P;
+        }
+        | multi_op MINUS add_op
+        {
+            $$ = new BinaryOperation();
+            $$->a = $1;
+            $$->b = $3;
+            $$->op = BinaryOperation::S;
+        };
+
+multi_op:
+        unary_op
+        {
+            $$ = new BinaryOperation();
+            $$->a = $1;
+            $$->b = nullptr;
+            $$->op = BinaryOperation::NONE;
+        }
+        | unary_op MUL multi_op
+        {
+            $$ = new BinaryOperation();
+            $$->a = $1;
+            $$->b = $3;
+            $$->op = BinaryOperation::M;
+        }
+        | unary_op DIV multi_op
+        {
+            $$ = new BinaryOperation();
+            $$->a = $1;
+            $$->b = $3;
+            $$->op = BinaryOperation::D;
+        };
+unary_op:
+        PLUS primary
+        {
+            $$ = new UnaryOperation();
+            $$->p = $2;
+            $$->op = BinaryOperation::P;
+        }
+        | MINUS primary
+        {
+            $$ = new UnaryOperation();
+            $$->p = $2;
+            $$->op = BinaryOperation::S;
+        };
+primary:
+        INT
+        {
+            $$ = new NumericLiteral();
+            $$->val = $1;
+        }
 	| IDENTIFIER
-	| expr binary_op expr
+        {
+            $$ = new IdentPr();
+            $$->name = $1;
+        }
+        | array_acc { $$ = $1; }
+        | field_acc { $$ = $1; }
+        | func_call { $$ = $1; };
+func_call:
+        IDENTIFIER LPAR arg_list RPAR
+        {
+            $$ = new FunCall();
+            $$->name = $1;
+            $$->args = $3;
+        };
+arg_list:
+        /* episilon */ { $$ = nullptr; }
+        | expression
+        {
+            $$ = new ElementList();
+            $$->push_back($1);
+        }
+        | expression COMMA arg_list
+        {
+            $$ = new ElementList();
+            $$->push_back($1);
+            if ($3 != nullptr) {
+                $$->splice($$->end(), $3);
+            }
+        };
+field_acc:
+        primary DOT IDENTIFIER
+        {
+            $$ = new DotOperation();
+            $$->pr = $1;
+            $$->field = new Identifier();
+            $$->field->name = $3;
+        };
+array_acc:
+        IDENTIFIER LSQR expression RSQR
+        {
+            $$ = new ArrayPr();
+            $$->name = $1;
+            $$->index = $3;
+        };

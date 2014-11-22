@@ -32,6 +32,7 @@ public:
 	std::string name;
 };
 
+
 class Declaration : public ASTNode {};
 
 class VariableDeclaration : public Declaration {
@@ -67,20 +68,43 @@ public:
 
 class Statement : public ASTNode {};
 class Expression : public ASTNode {};
+class Primary: public Expression {};
+class IdentPr: public Primary {
+    std::string name;
+}
+
+class ArrayPr: public Primary {
+    std::string name;
+    Expression *index;
+};
 
 class NumericLiteral : public Expression {
 public:
 	int val;	
 };
-
 class BinaryOperation : public Expression {
 public:
+    enum Ops {P, S, M, D, E, NE, L, LE, G, GE, A, O, NONE};
+         /* Plus, Sub, Multi, Div, Eq, NotEq, Less, LessEq, Greater, GEq, And, Or */
 	Expression *a, *b;
-	int op;
+	Ops op;
 };
 
-class DotOperation : public Expression {
-	
+class UnaryOperation : public Expression {
+  public:
+    Primary *p;
+    Ops op;
+};
+
+class FunCall : public Primary {
+  public:
+    std::string name;
+    ElementList *args;
+};
+
+class DotOperation : public Primary {
+    Primary *pr;
+    Identifier *field;
 };
 
 class ElementList : public ASTNode {
@@ -91,8 +115,8 @@ public:
 
 class AssignmentStatement : public Statement {
 public:
-	Identifier lhs;
-	Expression rhs;
+	Identifier *lhs;
+	Expression *rhs;
 };
 class CondStatList : public ASTNode {
     ElementList conds;
