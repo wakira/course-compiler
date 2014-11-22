@@ -118,13 +118,16 @@ public:
 	Identifier *lhs;
 	Expression *rhs;
 };
-class CondStatList : public ASTNode {
-    ElementList conds;
-    std::list<ElementList *> stats;
+class IOStatement: public Statement {
+  public:
+    enum IO {IN, OUT};
+    Expression *content;
+    IO op;
 };
 class IfStatement : public Statement {
-    
-
+  public:
+    ElementList conds;
+    std::list<ElementList *> stats;    
 };
 
 class Program : public ASTNode {

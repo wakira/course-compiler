@@ -155,13 +155,20 @@ statements:
 	};
 
 statement:
-        assignment {}
-        | print_statement {}
-        | if_statement {};
+        assignment { $$ = $1; }
+        | print_statement { $$ = $1; }
+        | if_statement { $$ = $1; };
+print_statement:
+        OUT expression
+        {
+            $$ = new IOStatement();
+            $$->content = $2;
+            $$->op = OUT;
+        };
 if_statement:
         IF expression THEN statements elif_semi_stats else_semi_stat
         {
-            $$ = new CondStateList();
+            $$ = new IfStatement();
             $$->conds.push_back($2);
             $$->stats.push_back($4);
             if ($5 != nullptr) {
@@ -169,7 +176,8 @@ if_statement:
                 $$->stats.splice($$->stats.end(), $5->stats);
             }
             if ($6 != nullptr) {
-                $$->stats.splice($$->stats.end(), $6);
+                $$->conds.push_back(nullptr);
+                $$->stats.push_back($6);
             }
         };
 elif_seme_stats:
@@ -189,7 +197,7 @@ elif_semi_stat:
         /* episilon */ { $$ = nullptr; }
         | ELIF expression THEN statements
         {
-            $$ = new CondStatList();
+            $$ = new IfStatement();
             $$->conds.push_back($2);
             $$->stats.push_back($4);
         };
@@ -205,7 +213,7 @@ assignment:
 	{
                 $$ = new AssignmentStatement();
                 $$->lhs = new Identifier();
-                $$->lhs->name = *($1);
+                $$->lhs->name = $1;
                 $$->rhs = $3;
 	}
 	;
@@ -373,26 +381,11 @@ primary:
         | field_acc { $$ = $1; }
         | func_call { $$ = $1; };
 func_call:
-        IDENTIFIER LPAR arg_list RPAR
+        IDENTIFIER LPAR args_decl RPAR
         {
             $$ = new FunCall();
             $$->name = $1;
             $$->args = $3;
-        };
-arg_list:
-        /* episilon */ { $$ = nullptr; }
-        | expression
-        {
-            $$ = new ElementList();
-            $$->push_back($1);
-        }
-        | expression COMMA arg_list
-        {
-            $$ = new ElementList();
-            $$->push_back($1);
-            if ($3 != nullptr) {
-                $$->splice($$->end(), $3);
-            }
         };
 field_acc:
         primary DOT IDENTIFIER

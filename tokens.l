@@ -29,6 +29,10 @@ extern "C" int yywrap() {  }
 "integer"				{ return INTEGER; }
 "boolean"				{ return BOOLEAN; }
 "function"				{ return FUNCTION; }
+"print"                                 { return OUT; }
+"output"                                { return OUT; }
+"input"                                 { return IN; }
+"scan"                                  { return IN; }
 "return"				{ return RETURN; }
 
 [a-zA-Z_][a-zA-Z0-9_]*	{

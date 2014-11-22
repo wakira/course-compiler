@@ -1,4 +1,10 @@
 /* Lock set */
-ast.h       plusun   locked
-syntax.y    plusun   locked
-tokens.l    plusun   locked
+ast.h
+    plusun -- locked
+           -- unlocked
+syntax.y
+    plusun -- locked
+           -- unlocked
+tokens.l
+    plusun -- locked
+           -- unlocked
