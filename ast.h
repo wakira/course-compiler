@@ -44,7 +44,9 @@ class Definition : public Declaration {};
 
 class ArrayDefinition : public Definition {
 public:
-	
+    Identifier *type;
+    Identifier *name;
+    int size;
 };
 
 class ClassDefinition : public Definition {
@@ -86,18 +88,20 @@ public:
 	std::list<ASTNode*> elements;
 };
 
-/*
+
 class AssignmentStatement : public Statement {
 public:
-	LeftValue lhs;
+	Identifier lhs;
 	Expression rhs;
 };
-
+class CondStatList : public ASTNode {
+    ElementList conds;
+    std::list<ElementList *> stats;
+};
 class IfStatement : public Statement {
-	// TODO
+    
 
 };
-*/
 
 class Program : public ASTNode {
 public:

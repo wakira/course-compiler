@@ -12,12 +12,19 @@ extern "C" int yywrap() {  }
 
 "program"				{ return PROGRAM; }
 "var"					{ return VAR; }
+"type"                                  { return TYPE; }
 "is"					{ return IS; }
+"of"                                    { return OF; }
+"array"                                 { return ARRAY; }
 "begin"					{ return BEG; }
 "end"					{ return END; }
 "and"					{ return AND; }
 "or"					{ return OR; }
 "xor"					{ return XOR; }
+"if"                                    { return IF; }
+"then"                                  { return THEN; }
+"else"                                  { return ELSE; }
+"elif"                                  { return ELIF; }
 "print"					{ return PRINT; }
 "integer"				{ return INTEGER; }
 "boolean"				{ return BOOLEAN; }

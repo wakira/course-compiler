@@ -64,7 +64,14 @@ def:
 	| type_def {}
 	| array_def {}
 	| class_def {};
-
+array_def:
+        TYPE IDENTIFIER IS ARRAY OF INT IDENTIFIER
+        {
+            $$ = new ArrayDefinition();
+            $$->type = $7;
+            $$->name = $2;
+            $$->size = $6;
+        };
 func_def:
 	FUNCTION IDENTIFIER LPAR args_decl RPAR var_decls ret_decl IS block FUNCTION IDENTIFIER SEMICOLON
 	{
@@ -132,7 +139,8 @@ block:
 	BEG statements END { $$ = $2 };
 
 statements:
-	statement 
+        /* episilon */ { $$ = nullptr; }
+        | statement 
 	{
 		$$ = new ElementList();
 		$$->elements.push_back($1);
@@ -147,16 +155,58 @@ statements:
 	};
 
 statement:
-	assignment 
-	{
-	}
-	| print_statement {}
-	| if_statement {}
-	| 
+        assignment {}
+        | print_statement {}
+        | if_statement {};
+if_statement:
+        IF expression THEN statements elif_semi_stats else_semi_stat
+        {
+            $$ = new CondStateList();
+            $$->conds.push_back($2);
+            $$->stats.push_back($4);
+            if ($5 != nullptr) {
+                $$->conds.splice($$->conds.end(), $5->conds);
+                $$->stats.splice($$->stats.end(), $5->stats);
+            }
+            if ($6 != nullptr) {
+                $$->stats.splice($$->stats.end(), $6);
+            }
+        };
+elif_seme_stats:
+        /* episilon */ {$$ = nullptr;}
+        | elif_semi_stat { $$ = $1; }
+        | elif_semi_stat elif_semi_stats
+        {
+            if ($2 != nullptr) {
+                $$ = $2;
+                $$->conds.push_front($1->conds[0]);
+                $$->stats.push_front($1->stats[0]);
+            } else {
+                $$ = $1;
+            }
+        };
+elif_semi_stat:
+        /* episilon */ { $$ = nullptr; }
+        | ELIF expression THEN statements
+        {
+            $$ = new CondStatList();
+            $$->conds.push_back($2);
+            $$->stats.push_back($4);
+        };
+else_semi_stat:
+        ELSE statements
+        {
+            $$ = $2;
+        };
+        
 
 assignment:
 	IDENTIFIER ASSIGN expression SEMICOLON
 	{
+                $$ = new AssignmentStatement();
+                $$->lhs = new Identifier();
+                $$->lhs->name = *($1);
+                $$->rhs = $3;
 	}
 	;
 
