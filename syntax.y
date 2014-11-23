@@ -309,12 +309,25 @@ else_semi_stat:
         
 
 assignment:
-	identifier ASSIGN expression SEMICOLON
+	ident_pr ASSIGN expression SEMICOLON
+	{
+                $$ = new AssignmentStatement();
+                $$->lhs = $1;
+                $$->rhs = $3;
+	}
+	| field_acc ASSIGN expression SEMICOLON
+	{
+                $$ = new AssignmentStatement();
+                $$->lhs = $1;
+                $$->rhs = $3;
+	}
+	| array_acc ASSIGN expression SEMICOLON
 	{
                 $$ = new AssignmentStatement();
                 $$->lhs = $1;
                 $$->rhs = $3;
 	};
+
 
 expression:
        cond_or { $$ = $1; };

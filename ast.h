@@ -125,7 +125,7 @@ class RetStatement: public Statement {
 };
 class AssignmentStatement : public Statement {
 public:
-	Identifier *lhs;
+	Primary *lhs;
 	Expression *rhs;
 };
 class IOStatement: public Statement {
