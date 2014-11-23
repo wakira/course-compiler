@@ -45,7 +45,7 @@ void yyerror(const char *s) { printf("ERROR: %s\n", s); }
 /* Keywords */
 %token PROGRAM VAR IS BEG SEMICOLON END ASSIGN AND OR XOR FUNCTION IF ELSE ELIF OUT IN
 %token RETURN COMMA DOT LSQR RSQR ARRAY THEN OF TYPE EXT CLASS
-%token INTEGER BOOLEAN
+/* %token INTEGER BOOLEAN */
 /* Literals */
 %token <type_int> INT
 %token <type_string> IDENTIFIER

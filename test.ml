@@ -9,22 +9,6 @@ return boolean;
      end if
      return no;
    end function isodd;
-
-is
-  var p is a;
-  var q is b;
-begin
-  print p.f(5);
-  print q.f(4);
-  p.v := 3;
-  print p.f(3);
-  multy();
-  print ackerman(3, 4);
-  if isodd(3) then
-    print 3;
-  end if
-end
-
    function ackerman(m, n)
      var m is integer;
      var n is integer;
@@ -39,7 +23,6 @@ end
        return ackerman(m - 1, ackerman(m, n - 1));
      end if
    end function ackerman;
-
    type line is array of 10 integer;
    type grid is array of 10 line;
 
@@ -76,6 +59,23 @@ end
      return v;
     end function f;
   end class;
+
+is
+  var p is a;
+  var q is b;
+begin
+  print p.f(5);
+  print q.f(4);
+  p.v := 3;
+  print p.f(3);
+  multy();
+  print ackerman(3, 4);
+  if isodd(3) then
+    print 3;
+  end if
+end
+
+
 
 program a()
 function a (a, b)

@@ -27,8 +27,6 @@ extern "C" int yywrap() {  }
 "then"                                  { return THEN; }
 "else"                                  { return ELSE; }
 "elif"                                  { return ELIF; }
-"integer"				{ return INTEGER; }
-"boolean"				{ return BOOLEAN; }
 "function"				{ return FUNCTION; }
 "print"                                 { return OUT; }
 "output"                                { return OUT; }
