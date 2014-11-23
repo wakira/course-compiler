@@ -53,13 +53,14 @@ public:
 class ClassDefinition : public Definition {
 public:
 	Identifier *className;
-	std::list<VariableDeclaration*> variables;
-	std::list<FunctionDefinition*> functions;
+        Identifier *extFrom;
+	ElementList *variables;
+	ElementList *functions;
 };
 
 class FunctionDefinition : public Definition {
 public:
-	Identifier *name;
+        Identifier *name;
 	Identifier *retType;
 	ElementList *arguments;
 	ElementList *variables;
@@ -68,17 +69,22 @@ public:
 
 class Statement : public ASTNode {};
 class Expression : public ASTNode {};
-class Primary: public Expression {};
+class Primary: public Expression {
+  public:
+    Expression *expr;
+};
 class IdentPr: public Primary {
-    std::string name;
-}
+  public:
+    Identifier *name;
+};
 
 class ArrayPr: public Primary {
-    std::string name;
+  public:
+    Identifier *name;
     Expression *index;
 };
 
-class NumericLiteral : public Expression {
+class NumericLiteral : public Primary {
 public:
 	int val;	
 };
@@ -93,16 +99,17 @@ public:
 class UnaryOperation : public Expression {
   public:
     Primary *p;
-    Ops op;
+    BinaryOperation::Ops op;
 };
 
 class FunCall : public Primary {
   public:
-    std::string name;
+    Primary *name;
     ElementList *args;
 };
 
 class DotOperation : public Primary {
+  public:
     Primary *pr;
     Identifier *field;
 };
@@ -112,7 +119,10 @@ public:
 	std::list<ASTNode*> elements;
 };
 
-
+class RetStatement: public Statement {
+  public:
+    Expression *expr;
+};
 class AssignmentStatement : public Statement {
 public:
 	Identifier *lhs;
@@ -129,9 +139,13 @@ class IfStatement : public Statement {
     ElementList conds;
     std::list<ElementList *> stats;    
 };
-
+class FuncStatement: public Statement {
+  public:
+    FunCall *call;
+};
 class Program : public ASTNode {
 public:
+    Identifier *name;
 	ElementList *definitions;
 	ElementList *variableDeclarations;
 	ElementList *programBlock;

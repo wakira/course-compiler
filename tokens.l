@@ -16,6 +16,8 @@ extern "C" int yywrap() {  }
 "is"					{ return IS; }
 "of"                                    { return OF; }
 "array"                                 { return ARRAY; }
+"class"                                 { return CLASS; }
+"extends"                               { return EXT; }
 "begin"					{ return BEG; }
 "end"					{ return END; }
 "and"					{ return AND; }
@@ -25,7 +27,6 @@ extern "C" int yywrap() {  }
 "then"                                  { return THEN; }
 "else"                                  { return ELSE; }
 "elif"                                  { return ELIF; }
-"print"					{ return PRINT; }
 "integer"				{ return INTEGER; }
 "boolean"				{ return BOOLEAN; }
 "function"				{ return FUNCTION; }

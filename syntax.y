@@ -17,15 +17,34 @@ void yyerror(const char *s) { printf("ERROR: %s\n", s); }
 
 	Program *type_program;
 	ElementList *type_element_list;
+        Definition *type_definition;
 	VariableDeclaration *type_variable_declaration;
-	FunctionDeclaration *type_function_declaration;
 	Identifier *type_identifier;
+        Statement *type_statement;
+        Expression *type_expression;
+        Primary *type_primary;
+        ClassDefinition *type_class_def;
+        ArrayDefinition *type_array_def;
+        FunctionDefinition *type_func_def;
+    IOStatement *type_iostat;
+    IfStatement *type_ifstat;
+    AssignmentStatement *type_assignstat;
+    BinaryOperation *type_binexpr;
+    UnaryOperation *type_uexpr;
+    NumericLiteral *type_intpr;
+    IdentPr *type_identpr;
+    FunCall *type_funcall;
+    DotOperation *type_dotop;
+    ArrayPr *type_arrpr;
+    RetStatement *type_retstat;
+    Identifier *type_ident;
+    FuncStatement *type_funcstat;
 }
 
 %token PLUS MINUS MUL DIV LPAR RPAR EQ NE LT LE GT GE
 /* Keywords */
-%token PROGRAM VAR IS BEG SEMICOLON END ASSIGN AND OR XOR PRINT FUNCTION
-%token RETURN COMMA
+%token PROGRAM VAR IS BEG SEMICOLON END ASSIGN AND OR XOR FUNCTION IF ELSE ELIF OUT IN
+%token RETURN COMMA DOT LSQR RSQR ARRAY THEN OF TYPE EXT CLASS
 %token INTEGER BOOLEAN
 /* Literals */
 %token <type_int> INT
@@ -35,9 +54,27 @@ void yyerror(const char *s) { printf("ERROR: %s\n", s); }
 %type <type_program> program 
 %type <type_identifier> ret_decl
 %type <type_variable_declaration> var_decl
-%type <type_function_declaration> func_def
-%type <type_element_list> block statements var_decls defs args_decl more_args_decl
-
+%type <type_element_list> block statements var_decls defs args_decl more_args_decl func_defs else_semi_stat args_list more_args_list
+%type <type_definition> def
+%type <type_class_def> class_def
+%type <type_array_def> array_def
+%type <type_func_def> func_def
+%type <type_statement> statement
+%type <type_funcstat> func_statement
+%type <type_assignstat> assignment
+%type <type_iostat> print_statement
+%type <type_retstat> ret_statement
+%type <type_ifstat> if_statement elif_semi_stat elif_semi_stats
+%type <type_expression> expression 
+%type <type_binexpr> cond_or cond_and eq_op rel_op add_op multi_op
+%type <type_uexpr> unary_op
+%type <type_primary> primary 
+%type <type_funcall> func_call
+%type <type_dotop> field_acc
+%type <type_intpr> int_pr
+%type <type_arrpr> array_acc
+%type <type_identpr> ident_pr
+%type <type_ident> identifier
 %left PLUS MINUS
 %left MUL DIV
 
@@ -46,38 +83,73 @@ void yyerror(const char *s) { printf("ERROR: %s\n", s); }
 %%
 
 program: 
-	PROGRAM IDENTIFIER LPAR RPAR defs IS var_decls block
+	PROGRAM identifier LPAR RPAR defs IS var_decls block
 	{
 		$$ = new Program();
 		$$->definitions = $5;
 		$$->variableDeclarations = $7;
 		$$->programBlock = $8;
-		printf("Parsing of program %s finished successfully\n", ($2)->c_str());
+                $$->name = $2;
+		printf("Parsing of program '%s' finished successfully\n", $$->name->name.c_str());
 	};
 
 defs:
-	/* epsilon */ {}
-	| def defs {};
+        /* epsilon */ { $$ = nullptr; }
+	| def defs
+        {
+            $$ = new ElementList();
+            $$->elements.push_back($1);
+            if ($2 != nullptr) {
+                $$->elements.splice($$->elements.end(), $2->elements);
+            }
+        };
 
 def:
-	func_def {}
-	| type_def {}
-	| array_def {}
-	| class_def {};
+        func_def { $$ = $1; }
+        | array_def { $$ = $1; }
+        | class_def { $$ = $1; };
+class_def:
+        TYPE identifier IS CLASS var_decls func_defs END CLASS SEMICOLON
+        {
+            $$ = new ClassDefinition();
+            $$->className = $2;
+            $$->extFrom = nullptr;
+            $$->variables = $5;
+            $$->functions = $6;
+        }
+        | TYPE identifier IS CLASS EXT identifier var_decls func_defs END CLASS SEMICOLON
+        {
+            $$ = new ClassDefinition();
+            $$->className = $2;
+            $$->extFrom = $6;
+            $$->variables = $7;
+            $$->variables = $8;
+        }
+
 array_def:
-        TYPE IDENTIFIER IS ARRAY OF INT IDENTIFIER
+        TYPE identifier IS ARRAY OF INT identifier SEMICOLON
         {
             $$ = new ArrayDefinition();
             $$->type = $7;
             $$->name = $2;
             $$->size = $6;
         };
+func_defs:
+        /* epsilon */ { $$ = nullptr; }
+        | func_def func_defs
+        {
+            $$ = new ElementList();
+            $$->elements.push_back($1);
+            if ($2 != nullptr) {
+                $$->elements.splice($$->elements.end(), $2->elements);
+            }
+        }
 func_def:
-	FUNCTION IDENTIFIER LPAR args_decl RPAR var_decls ret_decl IS block FUNCTION IDENTIFIER SEMICOLON
+	FUNCTION identifier LPAR args_decl RPAR var_decls ret_decl IS var_decls block FUNCTION identifier SEMICOLON
 	{
-		$$ = new FunctionDeclaration();
+		$$ = new FunctionDefinition();
 		$$->name = $2;
-		$$->arguments = $4
+		$$->arguments = $4;
 		$$->variables = $6;
 		$$->retType = $7;
 		$$->functionBlock = $9;
@@ -85,7 +157,7 @@ func_def:
 
 args_decl:
 	/* epsilon */ { $$ = nullptr; }
-	| IDENTIFIER more_args_decl
+	| ident_pr more_args_decl
 	{
 		$$ = new ElementList();
 		$$->elements.push_back($1);
@@ -97,7 +169,7 @@ args_decl:
 
 more_args_decl:
 	/* epsilon */ { $$ = nullptr; }
-	| COMMA IDENTIFIER more_args_decl
+	| COMMA ident_pr more_args_decl
 	{
 		$$ = new ElementList();
 		$$->elements.push_back($2);
@@ -105,13 +177,37 @@ more_args_decl:
 			$$->elements.splice($$->elements.end(), $3->elements);
 		}
 	};
-
+identifier:
+        IDENTIFIER
+        {
+            $$ = new Identifier;
+            $$->name = *($1);
+        };
+args_list:
+        /* epsilon */ { $$ = nullptr; }
+        | expression more_args_list
+        {
+            $$ = new ElementList();
+            $$->elements.push_back($1);
+            if ($2 != nullptr) {
+                $$->elements.splice($$->elements.end(), $2->elements);
+            }
+        };
+more_args_list:
+        /* epsilon */ { $$ = nullptr; }
+        | COMMA expression more_args_list
+        {
+            $$ = new ElementList();
+            $$->elements.push_back($2);
+            if ($3 != nullptr) {
+                $$->elements.splice($$->elements.end(), $3->elements);
+            }
+        };
 ret_decl:
 	/* epsilon */ { $$ = nullptr; }
-	| RETURN IDENTIFIER SEMICOLON
+	| RETURN identifier SEMICOLON
 	{
-		$$ = new Identifier();
-		$$->name = *($2);
+		$$ = $2;
 	};
 
 var_decls:
@@ -126,25 +222,18 @@ var_decls:
 	};
 
 var_decl:
-	VAR IDENTIFIER IS IDENTIFIER SEMICOLON
+	VAR identifier IS identifier SEMICOLON
 	{
 		$$ = new VariableDeclaration();
-		$$->type = new Identifier();
-		$$->type->name = *($4);
-		$$->name = new Identifier();
-		$$->name->name = *($2);
+		$$->type = $4;
+		$$->name = $2;
 	};
 
 block:
-	BEG statements END { $$ = $2 };
+        BEG statements END { $$ = $2; };
 
 statements:
-        /* episilon */ { $$ = nullptr; }
-        | statement 
-	{
-		$$ = new ElementList();
-		$$->elements.push_back($1);
-	}
+        /* epsilon */ { $$ = nullptr; }
 	| statement statements 
 	{
 		$$ = new ElementList();
@@ -157,69 +246,78 @@ statements:
 statement:
         assignment { $$ = $1; }
         | print_statement { $$ = $1; }
-        | if_statement { $$ = $1; };
+        | if_statement { $$ = $1; }
+        | ret_statement { $$ = $1; }
+        | func_statement { $$ = $1; };
+func_statement:
+        func_call SEMICOLON
+        {
+            $$ = new FuncStatement();
+            $$->call = $1;
+        };
+ret_statement:
+        RETURN expression SEMICOLON
+        {
+            $$ = new RetStatement();
+            $$->expr = $2;
+        };
 print_statement:
-        OUT expression
+        OUT expression SEMICOLON
         {
             $$ = new IOStatement();
             $$->content = $2;
-            $$->op = OUT;
+            $$->op = IOStatement::OUT;
         };
 if_statement:
-        IF expression THEN statements elif_semi_stats else_semi_stat
+        IF expression THEN statements elif_semi_stats else_semi_stat END IF
         {
             $$ = new IfStatement();
-            $$->conds.push_back($2);
+            $$->conds.elements.push_back($2);
             $$->stats.push_back($4);
             if ($5 != nullptr) {
-                $$->conds.splice($$->conds.end(), $5->conds);
+                $$->conds.elements.splice($$->conds.elements.end(), $5->conds.elements);
                 $$->stats.splice($$->stats.end(), $5->stats);
             }
             if ($6 != nullptr) {
-                $$->conds.push_back(nullptr);
+                $$->conds.elements.push_back(nullptr);
                 $$->stats.push_back($6);
             }
         };
-elif_seme_stats:
-        /* episilon */ {$$ = nullptr;}
-        | elif_semi_stat { $$ = $1; }
+elif_semi_stats:
+        /* epsilon */ {$$ = nullptr;}
         | elif_semi_stat elif_semi_stats
         {
+            $$ = $1;
             if ($2 != nullptr) {
-                $$ = $2;
-                $$->conds.push_front($1->conds[0]);
-                $$->stats.push_front($1->stats[0]);
-            } else {
-                $$ = $1;
+                $$->conds.elements.splice($$->conds.elements.end(), $2->conds.elements);
+                $$->stats.splice($$->stats.end(), $2->stats);
             }
         };
 elif_semi_stat:
-        /* episilon */ { $$ = nullptr; }
-        | ELIF expression THEN statements
+        ELIF expression THEN statements
         {
             $$ = new IfStatement();
-            $$->conds.push_back($2);
+            $$->conds.elements.push_back($2);
             $$->stats.push_back($4);
         };
 else_semi_stat:
-        ELSE statements
+        /* epsilon */ { $$ = nullptr; }
+        | ELSE statements
         {
             $$ = $2;
         };
         
 
 assignment:
-	IDENTIFIER ASSIGN expression SEMICOLON
+	identifier ASSIGN expression SEMICOLON
 	{
                 $$ = new AssignmentStatement();
-                $$->lhs = new Identifier();
-                $$->lhs->name = $1;
+                $$->lhs = $1;
                 $$->rhs = $3;
-	}
-	;
+	};
 
 expression:
-       cond_or { $$ = $1 };
+       cond_or { $$ = $1; };
 cond_or:
        cond_and
        {
@@ -228,7 +326,7 @@ cond_or:
             $$->b = nullptr;
             $$->op = BinaryOperation::NONE;
        }
-       | cond_and EQ cond_or
+       | cond_and OR cond_or
        {
            $$ = new BinaryOperation();
            $$->a = $1;
@@ -243,7 +341,7 @@ cond_and:
             $$->b = nullptr;
             $$->op = BinaryOperation::NONE;
        }
-       | eq_op EQ cond_and
+       | eq_op AND cond_and
        {
            $$ = new BinaryOperation();
            $$->a = $1;
@@ -354,7 +452,13 @@ multi_op:
             $$->op = BinaryOperation::D;
         };
 unary_op:
-        PLUS primary
+        primary
+        {
+            $$ = new UnaryOperation();
+            $$->p = $1;
+            $$->op = BinaryOperation::NONE;
+        }
+        | PLUS primary
         {
             $$ = new UnaryOperation();
             $$->p = $2;
@@ -367,36 +471,50 @@ unary_op:
             $$->op = BinaryOperation::S;
         };
 primary:
+        int_pr { $$ = $1; }
+	| ident_pr { $$ = $1; }
+        | array_acc { $$ = $1; }
+        | field_acc { $$ = $1; }
+        | func_call { $$ = $1; }
+        | LPAR expression RPAR
+        {
+            $$ = new Primary();
+            $$->expr = $2;
+        }
+int_pr:
         INT
         {
             $$ = new NumericLiteral();
             $$->val = $1;
-        }
-	| IDENTIFIER
+        };
+ident_pr:
+        identifier
         {
             $$ = new IdentPr();
             $$->name = $1;
-        }
-        | array_acc { $$ = $1; }
-        | field_acc { $$ = $1; }
-        | func_call { $$ = $1; };
+        };
 func_call:
-        IDENTIFIER LPAR args_decl RPAR
+        ident_pr LPAR args_list RPAR
+        {
+            $$ = new FunCall();
+            $$->name = $1;
+            $$->args = $3;
+        }
+        | field_acc LPAR args_list RPAR
         {
             $$ = new FunCall();
             $$->name = $1;
             $$->args = $3;
         };
 field_acc:
-        primary DOT IDENTIFIER
+        primary DOT identifier
         {
             $$ = new DotOperation();
             $$->pr = $1;
-            $$->field = new Identifier();
-            $$->field->name = $3;
+            $$->field = $3;
         };
 array_acc:
-        IDENTIFIER LSQR expression RSQR
+        identifier LSQR expression RSQR
         {
             $$ = new ArrayPr();
             $$->name = $1;
