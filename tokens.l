@@ -67,7 +67,6 @@ extern "C" int yywrap() {  }
 ","						{ return COMMA; }
 ":="					{ return ASSIGN; }
 "."                                     { return DOT; }
-"and"                                   { return AND; }
 "&&"                                    { return AND; }
 "||"                                    { return OR; }
 %%
