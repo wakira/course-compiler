@@ -94,6 +94,7 @@ program:
 		$$->variableDeclarations = $7;
 		$$->programBlock = $8;
                 $$->name = $2;
+                astRoot = $$;
 		printf("Parsing of program '%s' finished successfully\n", $$->name->name.c_str());
 	};
 

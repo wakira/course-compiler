@@ -1,3 +1,6 @@
+#ifndef _AST_HEADER
+#define _AST_HEADER
+
 #include <list>
 #include <string>
 //#include <llvm/Value.h>
@@ -20,11 +23,9 @@ class Program;
 
 class ASTNode {
 public:
-	// Non virtual function during debug
-	/*
-	virtual ~ASTNode() = 0;
-	virtual llvm::Value* codeGen(CodeGenContext& context) = 0; 
-	*/
+    virtual ~ASTNode() {};
+    //	virtual llvm::Value* codeGen(CodeGenContext& context) = 0; 
+
 };
 
 class Identifier {
@@ -180,3 +181,4 @@ class ASTVariableDeclaration : public ASTStatement {
 
 };
 */
+#endif
