@@ -12,6 +12,7 @@ std::string ast_string(ASTNode *);
 #define IS_PANY(obj, type) (IS_SAME_TYPE(*(obj), type))
 
 #define P_TRANS(to, from, type) type *to = (type *) from
-#define TAB "\t"
+#define TAB "  "
+#define LIM "|"
 
 #endif

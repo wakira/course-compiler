@@ -64,7 +64,8 @@ public:
         Identifier *name;
 	Identifier *retType;
 	ElementList *arguments;
-	ElementList *variables;
+	ElementList *args_var;
+    ElementList *variables;
 	ElementList *functionBlock;
 };
 
@@ -138,7 +139,7 @@ class IOStatement: public Statement {
 };
 class IfStatement : public Statement {
   public:
-    ElementList conds;
+    ElementList *conds;
     std::list<ElementList *> stats;    
 };
 

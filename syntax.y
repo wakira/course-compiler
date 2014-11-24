@@ -4,7 +4,6 @@
 #include <string>
 #include <cstdlib>
 #include <cstdio>
-
 Program *astRoot;
 
 extern int yylex();
@@ -155,9 +154,10 @@ func_def:
 		$$ = new FunctionDefinition();
 		$$->name = $2;
 		$$->arguments = $4;
-		$$->variables = $6;
+		$$->args_var = $6;
 		$$->retType = $7;
-		$$->functionBlock = $9;
+                $$->variables = $9;
+		$$->functionBlock = $10;
 	};
 
 args_decl:
@@ -284,35 +284,36 @@ scan_statement:
             $$ = new IOStatement();
             $$->content = nullptr;
             $$->var = $2;
-            $$->op = IOStatement::OUT;
+            $$->op = IOStatement::IN;
         }
         | INPUT field_acc SEMICOLON
         {
             $$ = new IOStatement();
             $$->content = nullptr;
             $$->var = $2;
-            $$->op = IOStatement::OUT;
+            $$->op = IOStatement::IN;
         }
         | INPUT array_acc SEMICOLON
         {
             $$ = new IOStatement();
             $$->content = nullptr;
             $$->var = $2;
-            $$->op = IOStatement::OUT;
+            $$->op = IOStatement::IN;
         };
 
 if_statement:
         IF expression THEN statements elif_semi_stats else_semi_stat END IF
         {
             $$ = new IfStatement();
-            $$->conds.elements.push_back($2);
+            $$->conds = new ElementList();
+            $$->conds->elements.push_back($2);
             $$->stats.push_back($4);
             if ($5 != nullptr) {
-                $$->conds.elements.splice($$->conds.elements.end(), $5->conds.elements);
+                $$->conds->elements.splice($$->conds->elements.end(), $5->conds->elements);
                 $$->stats.splice($$->stats.end(), $5->stats);
             }
             if ($6 != nullptr) {
-                $$->conds.elements.push_back(nullptr);
+                $$->conds->elements.push_back(nullptr);
                 $$->stats.push_back($6);
             }
         };
@@ -346,7 +347,7 @@ elif_semi_stats:
         {
             $$ = $1;
             if ($2 != nullptr) {
-                $$->conds.elements.splice($$->conds.elements.end(), $2->conds.elements);
+                $$->conds->elements.splice($$->conds->elements.end(), $2->conds->elements);
                 $$->stats.splice($$->stats.end(), $2->stats);
             }
         };
@@ -354,7 +355,8 @@ elif_semi_stat:
         ELIF expression THEN statements
         {
             $$ = new IfStatement();
-            $$->conds.elements.push_back($2);
+            $$->conds = new ElementList();
+            $$->conds->elements.push_back($2);
             $$->stats.push_back($4);
         };
 else_semi_stat:
