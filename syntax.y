@@ -39,12 +39,14 @@ void yyerror(const char *s) { printf("ERROR: %s\n", s); }
     RetStatement *type_retstat;
     Identifier *type_ident;
     FuncStatement *type_funcstat;
+    LoopStatement *type_loopstat;
+    ForeachStatement *type_foreach;
 }
 
-%token PLUS MINUS MUL DIV LPAR RPAR EQ NE LT LE GT GE
+%token PLUS MINUS MUL DIV LPAR RPAR EQ NE LT LE GT GE MOD
 /* Keywords */
-%token PROGRAM VAR IS BEG SEMICOLON END ASSIGN AND OR XOR FUNCTION IF ELSE ELIF OUT IN
-%token RETURN COMMA DOT LSQR RSQR ARRAY THEN OF TYPE EXT CLASS
+%token PROGRAM VAR IS BEG SEMICOLON END ASSIGN AND OR XOR FUNCTION IF ELSE ELIF OUTPUT INPUT
+%token RETURN COMMA DOT LSQR RSQR ARRAY THEN OF TYPE EXT CLASS WHILE DO REPEAT UNTIL FOREACH IN
 /* %token INTEGER BOOLEAN */
 /* Literals */
 %token <type_int> INT
@@ -62,13 +64,15 @@ void yyerror(const char *s) { printf("ERROR: %s\n", s); }
 %type <type_statement> statement
 %type <type_funcstat> func_statement
 %type <type_assignstat> assignment
-%type <type_iostat> print_statement
+%type <type_iostat> print_statement scan_statement
 %type <type_retstat> ret_statement
 %type <type_ifstat> if_statement elif_semi_stat elif_semi_stats
+%type <type_loopstat> while_statement repeat_statement
+%type <type_foreach> foreach_statement
 %type <type_expression> expression 
 %type <type_binexpr> cond_or cond_and eq_op rel_op add_op multi_op
 %type <type_uexpr> unary_op
-%type <type_primary> primary 
+%type <type_primary> primary basic_primary
 %type <type_funcall> func_call
 %type <type_dotop> field_acc
 %type <type_intpr> int_pr
@@ -246,7 +250,11 @@ statements:
 statement:
         assignment { $$ = $1; }
         | print_statement { $$ = $1; }
+        | scan_statement { $$ = $1;  }
         | if_statement { $$ = $1; }
+        | while_statement { $$ = $1; }
+        | repeat_statement { $$ = $1; }
+        | foreach_statement { $$ = $1; }
         | ret_statement { $$ = $1; }
         | func_statement { $$ = $1; };
 func_statement:
@@ -262,12 +270,36 @@ ret_statement:
             $$->expr = $2;
         };
 print_statement:
-        OUT expression SEMICOLON
+        OUTPUT expression SEMICOLON
         {
             $$ = new IOStatement();
             $$->content = $2;
+            $$->var = nullptr;
             $$->op = IOStatement::OUT;
         };
+scan_statement:
+        INPUT ident_pr SEMICOLON
+        {
+            $$ = new IOStatement();
+            $$->content = nullptr;
+            $$->var = $2;
+            $$->op = IOStatement::OUT;
+        }
+        | INPUT field_acc SEMICOLON
+        {
+            $$ = new IOStatement();
+            $$->content = nullptr;
+            $$->var = $2;
+            $$->op = IOStatement::OUT;
+        }
+        | INPUT array_acc SEMICOLON
+        {
+            $$ = new IOStatement();
+            $$->content = nullptr;
+            $$->var = $2;
+            $$->op = IOStatement::OUT;
+        };
+
 if_statement:
         IF expression THEN statements elif_semi_stats else_semi_stat END IF
         {
@@ -282,6 +314,30 @@ if_statement:
                 $$->conds.elements.push_back(nullptr);
                 $$->stats.push_back($6);
             }
+        };
+while_statement:
+        WHILE expression DO statements END WHILE
+        {
+            $$ = new LoopStatement();
+            $$->type = LoopStatement::WHILE;
+            $$->cond = $2;
+            $$->stats = $4;
+        };
+repeat_statement:
+        REPEAT statements UNTIL expression SEMICOLON
+        {
+            $$ = new LoopStatement();
+            $$->type = LoopStatement::REPEAT;
+            $$->cond = $4;
+            $$->stats = $2;
+        };
+foreach_statement:
+        FOREACH identifier IN identifier DO statements END FOREACH
+        {
+            $$ = new ForeachStatement();
+            $$->element = $2;
+            $$->array = $4;
+            $$->stats = $6;
         };
 elif_semi_stats:
         /* epsilon */ {$$ = nullptr;}
@@ -307,7 +363,6 @@ else_semi_stat:
             $$ = $2;
         };
         
-
 assignment:
 	ident_pr ASSIGN expression SEMICOLON
 	{
@@ -463,6 +518,13 @@ multi_op:
             $$->a = $1;
             $$->b = $3;
             $$->op = BinaryOperation::D;
+        }
+        | unary_op MOD multi_op
+        {
+            $$ = new BinaryOperation();
+            $$->a = $1;
+            $$->b = $3;
+            $$->op = BinaryOperation::MOD;
         };
 unary_op:
         primary
@@ -485,15 +547,18 @@ unary_op:
         };
 primary:
         int_pr { $$ = $1; }
-	| ident_pr { $$ = $1; }
-        | array_acc { $$ = $1; }
-        | field_acc { $$ = $1; }
-        | func_call { $$ = $1; }
+        | basic_primary { $$ = $1; }
         | LPAR expression RPAR
         {
             $$ = new Primary();
             $$->expr = $2;
         }
+basic_primary:
+        ident_pr { $$ = $1; }
+        | array_acc { $$ = $1; }
+        | field_acc { $$ = $1; }
+        | func_call { $$ = $1; };
+
 int_pr:
         INT
         {
@@ -520,14 +585,14 @@ func_call:
             $$->args = $3;
         };
 field_acc:
-        primary DOT identifier
+        basic_primary DOT identifier
         {
             $$ = new DotOperation();
             $$->pr = $1;
             $$->field = $3;
         };
 array_acc:
-        identifier LSQR expression RSQR
+        basic_primary LSQR expression RSQR
         {
             $$ = new ArrayPr();
             $$->name = $1;

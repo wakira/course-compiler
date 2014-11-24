@@ -27,11 +27,17 @@ extern "C" int yywrap() {  }
 "then"                                  { return THEN; }
 "else"                                  { return ELSE; }
 "elif"                                  { return ELIF; }
+"while"                                 { return WHILE; }
+"do"                                    { return DO; }
+"repeat"                                { return REPEAT; }
+"until"                                 { return UNTIL; }
+"foreach"                               { return FOREACH; }
+"in"                                    { return IN; }
 "function"				{ return FUNCTION; }
-"print"                                 { return OUT; }
-"output"                                { return OUT; }
-"input"                                 { return IN; }
-"scan"                                  { return IN; }
+"print"                                 { return OUTPUT; }
+"output"                                { return OUTPUT; }
+"input"                                 { return INPUT; }
+"scan"                                  { return INPUT; }
 "return"				{ return RETURN; }
 
 [a-zA-Z_][a-zA-Z0-9_]*	{
@@ -46,6 +52,7 @@ extern "C" int yywrap() {  }
 "-"						{ return MINUS; }
 "*"						{ return MUL; }
 "/"						{ return DIV; }
+"%"                                             { return MOD; }
 "("						{ return LPAR; }	
 ")"						{ return RPAR; }
 "["                                             { return LSQR; }

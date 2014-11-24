@@ -80,7 +80,7 @@ class IdentPr: public Primary {
 
 class ArrayPr: public Primary {
   public:
-    Identifier *name;
+    Primary *name;
     Expression *index;
 };
 
@@ -90,8 +90,8 @@ public:
 };
 class BinaryOperation : public Expression {
 public:
-    enum Ops {P, S, M, D, E, NE, L, LE, G, GE, A, O, NONE};
-         /* Plus, Sub, Multi, Div, Eq, NotEq, Less, LessEq, Greater, GEq, And, Or */
+    enum Ops {P, S, M, D, MOD, E, NE, L, LE, G, GE, A, O, NONE};
+         /* Plus, Sub, Multi, Div, Mod, Eq, NotEq, Less, LessEq, Greater, GEq, And, Or */
 	Expression *a, *b;
 	Ops op;
 };
@@ -132,12 +132,27 @@ class IOStatement: public Statement {
   public:
     enum IO {IN, OUT};
     Expression *content;
+    Primary *var;
     IO op;
 };
 class IfStatement : public Statement {
   public:
     ElementList conds;
     std::list<ElementList *> stats;    
+};
+
+class LoopStatement: public Statement {
+  public:
+    enum Type { WHILE, REPEAT };
+    Type type;
+    Expression *cond;
+    ElementList *stats;
+};
+class ForeachStatement: public Statement {
+  public:
+    Identifier *element;
+    Identifier *array;
+    ElementList *stats;
 };
 class FuncStatement: public Statement {
   public:
