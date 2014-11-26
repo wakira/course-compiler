@@ -6,8 +6,11 @@
 extern "C" int yywrap() {  }
 %}
 
+%option yylineno
+
 %%
 
+"//"[^\r\n]* ;
 [ \t\n]	;
 
 "program"				{ return PROGRAM; }

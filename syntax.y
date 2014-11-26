@@ -7,7 +7,10 @@
 Program *astRoot;
 
 extern int yylex();
-void yyerror(const char *s) { printf("ERROR: %s\n", s); }
+extern int yylineno;
+void yyerror(const char *s) {
+	printf("Error: %s at line : %d\n", s, yylineno);
+}
 %}
 
 %union {
