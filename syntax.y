@@ -268,7 +268,12 @@ func_statement:
             $$->call = $1;
         };
 ret_statement:
-        RETURN expression SEMICOLON
+        RETURN SEMICOLON
+        {
+            $$ = new RetStatement();
+            $$->expr = nullptr;
+        }
+        | RETURN expression SEMICOLON
         {
             $$ = new RetStatement();
             $$->expr = $2;
