@@ -2,6 +2,7 @@
 ast.h
     plusun -- locked
            -- unlocked
+	   -- locked
 
 syntax.y
     plusun -- locked
@@ -11,3 +12,8 @@ tokens.l
     plusun -- locked
            -- unlocked
 
+codegen.h
+    plusun -- locked
+
+codegen.cpp
+    plusun -- locked

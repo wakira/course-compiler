@@ -12,6 +12,7 @@ extern int yyparse();
 extern int yylex(void);
 
 int main(int argc, char **argv) {
+        bool parsed = false;
 	if (argc == 2) {
 		if (strcmp(argv[1], "l") == 0) {
 			int type;
@@ -70,9 +71,14 @@ int main(int argc, char **argv) {
 
 		} else if (strcmp(argv[1], "s") == 0) {
 			yyparse();
+                        parsed = true;
 			string ast = ast_string(astRoot);
 			cout << ast << endl;
-		}
+		} 
 	}
+        if (!parsed) {
+            yyparse();
+            
+        }
 	return 0;
 }
