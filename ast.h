@@ -3,9 +3,9 @@
 
 #include <list>
 #include <string>
-//#include <llvm/Value.h>
+#include <llvm/Value.h>
 
-//class CodeGenContext;
+class CGContext;
 
 class ASTNode;
 class Identifier;
@@ -24,7 +24,7 @@ class Program;
 class ASTNode {
 public:
     virtual ~ASTNode() {};
-    //	virtual llvm::Value* codeGen(CodeGenContext& context) = 0; 
+    virtual llvm::Value* codeGen(CGContext& context) = 0; 
 
 };
 
@@ -34,21 +34,29 @@ public:
 };
 
 
-class Declaration : public ASTNode {};
+class Declaration : public ASTNode
+{
+    virtual llvm::Value* codeGen(CGContext& context);
+};
 
 class VariableDeclaration : public Declaration {
 public:
 	Identifier *type;
 	Identifier *name;
+        virtual llvm::Value* codeGen(CGContext& context); 
 };
 
-class Definition : public Declaration {};
+class Definition : public Declaration
+{
+        virtual llvm::Value* codeGen(CGContext& context);     
+};
 
 class ArrayDefinition : public Definition {
 public:
     Identifier *type;
     Identifier *name;
     int size;
+    virtual llvm::Value* codeGen(CGContext& context); 
 };
 
 class ClassDefinition : public Definition {
@@ -57,6 +65,7 @@ public:
         Identifier *extFrom;
 	ElementList *variables;
 	ElementList *functions;
+        virtual llvm::Value* codeGen(CGContext& context); 
 };
 
 class FunctionDefinition : public Definition {
@@ -67,28 +76,37 @@ public:
 	ElementList *args_var;
     ElementList *variables;
 	ElementList *functionBlock;
+    virtual llvm::Value* codeGen(CGContext& context); 
 };
 
-class Statement : public ASTNode {};
-class Expression : public ASTNode {};
+class Statement : public ASTNode {
+    virtual llvm::Value* codeGen(CGContext& context); 
+};
+class Expression : public ASTNode {
+    virtual llvm::Value* codeGen(CGContext& context); 
+};
 class Primary: public Expression {
   public:
     Expression *expr;
+    virtual llvm::Value* codeGen(CGContext& context); 
 };
 class IdentPr: public Primary {
   public:
     Identifier *name;
+    virtual llvm::Value* codeGen(CGContext& context); 
 };
 
 class ArrayPr: public Primary {
   public:
     Primary *name;
     Expression *index;
+    virtual llvm::Value* codeGen(CGContext& context); 
 };
 
 class NumericLiteral : public Primary {
 public:
-	int val;	
+	int val;
+    virtual llvm::Value* codeGen(CGContext& context); 
 };
 class BinaryOperation : public Expression {
 public:
@@ -96,39 +114,46 @@ public:
          /* Plus, Sub, Multi, Div, Mod, Eq, NotEq, Less, LessEq, Greater, GEq, And, Or */
 	Expression *a, *b;
 	Ops op;
+    virtual llvm::Value* codeGen(CGContext& context); 
 };
 
 class UnaryOperation : public Expression {
   public:
     Primary *p;
     BinaryOperation::Ops op;
+    virtual llvm::Value* codeGen(CGContext& context); 
 };
 
 class FunCall : public Primary {
   public:
     Primary *name;
     ElementList *args;
+    virtual llvm::Value* codeGen(CGContext& context); 
 };
 
 class DotOperation : public Primary {
   public:
     Primary *pr;
     Identifier *field;
+    virtual llvm::Value* codeGen(CGContext& context); 
 };
 
 class ElementList : public ASTNode {
 public:
 	std::list<ASTNode*> elements;
+    virtual llvm::Value* codeGen(CGContext& context); 
 };
 
 class RetStatement: public Statement {
   public:
     Expression *expr;
+    virtual llvm::Value* codeGen(CGContext& context); 
 };
 class AssignmentStatement : public Statement {
 public:
 	Primary *lhs;
 	Expression *rhs;
+    virtual llvm::Value* codeGen(CGContext& context); 
 };
 class IOStatement: public Statement {
   public:
@@ -136,11 +161,13 @@ class IOStatement: public Statement {
     Expression *content;
     Primary *var;
     IO op;
+    virtual llvm::Value* codeGen(CGContext& context); 
 };
 class IfStatement : public Statement {
   public:
     ElementList *conds;
-    std::list<ElementList *> stats;    
+    std::list<ElementList *> stats;
+    virtual llvm::Value* codeGen(CGContext& context); 
 };
 
 class LoopStatement: public Statement {
@@ -149,16 +176,19 @@ class LoopStatement: public Statement {
     Type type;
     Expression *cond;
     ElementList *stats;
+    virtual llvm::Value* codeGen(CGContext& context); 
 };
 class ForeachStatement: public Statement {
   public:
     Identifier *element;
     Identifier *array;
     ElementList *stats;
+    virtual llvm::Value* codeGen(CGContext& context); 
 };
 class FuncStatement: public Statement {
   public:
     FunCall *call;
+    virtual llvm::Value* codeGen(CGContext& context); 
 };
 class Program : public ASTNode {
 public:
@@ -166,6 +196,7 @@ public:
 	ElementList *definitions;
 	ElementList *variableDeclarations;
 	ElementList *programBlock;
+    virtual llvm::Value* codeGen(CGContext& context); 
 };
 
 /*
