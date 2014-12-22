@@ -89,8 +89,22 @@ CG_FUN(Declaration)
 {
 }
 
+static Type *typeOf(const Identifier *type)
+{
+    if (type->name.compare("int") == 0) {
+        return Type::getInt64Ty(getGlobalContext());
+    }
+    return Type::getVoidTy(getGlobalContext());
+}
+
 CG_FUN(VariableDeclaration)
 {
+    cout << "Generating variable declaration <" << type->name << ">"
+         << name->name << endl;
+    AllocaInst *alloc = new AllocaInst(typeOf(type), name->name.c_str(),
+                                       context.currentBlock());
+    context.locals()[name.name] = alloc;
+    return alloc;
 }
 
 CG_FUN(Definition)
@@ -115,6 +129,8 @@ CG_FUN(Statement)
 
 CG_FUN(Expression)
 {
+    cerr << "Not expected!" << endl;
+    return this->codeGen(context);
 }
 
 CG_FUN(Primary)
@@ -164,9 +180,18 @@ CG_FUN(BinaryOperation)
         case D:
             instr = Instruction::SDiv;
             break;
+        case MOD:
+            instr = Instruction::SRem;
+            break;
+        case A:
+            instr = Instruction::And;
+            break;            
+        case O:
+            instr = Instruction::Or;
+            break;            
         case :
             instr = Instruction::;
-            break;            
+            break;                        
         default:
             cout << "Undefined operation: " << op << endl;
             return NULL;
@@ -194,14 +219,24 @@ CG_FUN(DotOperation)
 
 CG_FUN(ElementList)
 {
+    cout << "Generating list..." << endl;
+    for (std::list<ASTNode *>::iterator itr = elements.begin();
+         itr != elements.end(); ++itr) {
+        (*itr)->codeGen(context);
+    }
 }
 
 CG_FUN(RetStatement)
 {
+    cout << "Generating return code..." << endl;
+    Value *ret = expr->codeGen(context);
+    context.setCurrentReturnValue(ret);
+    return ret;
 }
 
 CG_FUN(AssignmentStatement)
 {
+    
 }
 
 CG_FUN(IOStatement)
