@@ -4,6 +4,7 @@
 #include "ast.h"
 #include "codegen.h"
 
+using std::cerr;
 using std::cout;
 using std::endl;
 using std::vector;
@@ -17,6 +18,11 @@ CGContext::CGContext():
 Local &CGContext::locals()
 {
     return blocks.top()->locals;
+}
+
+Types &CGContext::types()
+{
+    return blocks.top()->types;
 }
 
 BasicBlock *CGContext::currentBlock()
@@ -89,19 +95,25 @@ CG_FUN(Declaration)
 {
 }
 
-static Type *typeOf(const Identifier *type)
+MyType *CGContext::typeOf(string name)
 {
-    if (type->name.compare("int") == 0) {
-        return Type::getInt64Ty(getGlobalContext());
+    if (type->name.compare("integer") == 0) {
+        MyType *ret = new MyType;
+        ret->llvm_type = Type::getInt64Ty(getGlobalContext());
+        ret->type = MyType::INT;
+    } else if (types().find(name) != types().end()) {
+        return types()[name];
+    } else {
+        return NULL;
     }
-    return Type::getVoidTy(getGlobalContext());
+    
 }
 
 CG_FUN(VariableDeclaration)
 {
     cout << "Generating variable declaration <" << type->name << ">"
          << name->name << endl;
-    AllocaInst *alloc = new AllocaInst(typeOf(type), name->name.c_str(),
+    AllocaInst *alloc = new AllocaInst(context.typeOf(type)->llvm_type, name->name.c_str(),
                                        context.currentBlock());
     context.locals()[name.name] = alloc;
     return alloc;
@@ -113,10 +125,22 @@ CG_FUN(Definition)
 
 CG_FUN(ArrayDefinition)
 {
+    cout << "Creating array definition for " << name->name << "<" << type->name ">" << endl;
+    if (context.typeOf(type->name) == NULL || size <= 0) {
+        cerr << "Wrong definition of array: " << type->name << "[" << size << "]" << endl;
+        return NULL;
+    } else {
+        MyType *arr_ty = new MyType;
+        arr_ty->type = MyType::ARRAY;
+        arr_ty->llvm_type = ArrayType::get(context.typeOf(type->name), size);
+        context.types()[name->name] = arr_ty;
+        return arr_ty->llvm_type;
+    }
 }
 
 CG_FUN(ClassDefinition)
 {
+    
 }
 
 CG_FUN(FunctionDefinition)
@@ -210,7 +234,6 @@ CG_FUN(UnaryOperation)
 
 CG_FUN(FunCall)
 {
-    
 }
 
 CG_FUN(DotOperation)

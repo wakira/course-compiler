@@ -26,12 +26,22 @@ class ASTNode;
 
 typedef std::map<std::string, Value *> Local;
 
+class MyType {
+  public:
+    enum { INT, ARRAY, CLASS } T;
+    Type *llvm_type;
+    T type;
+};
+
+typedef std::map<std::string, MyType *> Types;
+
 class CGBlock {
   public:
     CGBlock(BasicBlock *_block, Value *_value);
     BasicBlock *block;
     Value *retValue;
     Local locals;
+    Types types;
 };
 
 class CGContext {
@@ -44,9 +54,11 @@ class CGContext {
     void generateCode(ASTNode *root);
     GenericValue runCode();
     Local &locals();
+    Types &types();
     BasicBlock *currentBlock();
     void pushBlock(BasicBlock *block);
     void popBlock();
+    MyType *typeOf(std::string);
     void setCurrentRetValue(Value *value);
     Value *getCurrentRetValue();
 };
