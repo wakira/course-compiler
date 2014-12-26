@@ -3,7 +3,7 @@
 
 #include <list>
 #include <string>
-#include <llvm/Value.h>
+#include <llvm/IR/Value.h>
 
 class CGContext;
 
@@ -83,6 +83,7 @@ class Statement : public ASTNode {
     virtual llvm::Value* codeGen(CGContext& context); 
 };
 class Expression : public ASTNode {
+  public:
     virtual llvm::Value* codeGen(CGContext& context); 
 };
 class Primary: public Expression {

@@ -8,9 +8,10 @@ using std::cerr;
 using std::cout;
 using std::endl;
 using std::vector;
+using std::string;
 
 CGBlock::CGBlock(BasicBlock *_block, Value *_value):
-        block(block), value(vale) {}
+        block(_block), retValue(_value) {}
 
 CGContext::CGContext():
         module(new Module("main", getGlobalContext())) {}
@@ -97,7 +98,7 @@ CG_FUN(Declaration)
 
 MyType *CGContext::typeOf(string name)
 {
-    if (type->name.compare("integer") == 0) {
+    if (name.compare("integer") == 0) {
         MyType *ret = new MyType;
         ret->llvm_type = Type::getInt64Ty(getGlobalContext());
         ret->type = MyType::INT;
@@ -113,9 +114,9 @@ CG_FUN(VariableDeclaration)
 {
     cout << "Generating variable declaration <" << type->name << ">"
          << name->name << endl;
-    AllocaInst *alloc = new AllocaInst(context.typeOf(type)->llvm_type, name->name.c_str(),
+    AllocaInst *alloc = new AllocaInst(context.typeOf(type->name)->llvm_type, name->name.c_str(),
                                        context.currentBlock());
-    context.locals()[name.name] = alloc;
+    context.locals()[name->name] = alloc;
     return alloc;
 }
 
@@ -125,16 +126,19 @@ CG_FUN(Definition)
 
 CG_FUN(ArrayDefinition)
 {
-    cout << "Creating array definition for " << name->name << "<" << type->name ">" << endl;
+    cout << "Creating array definition for " << name->name << "<" << type->name << ">" << endl;
     if (context.typeOf(type->name) == NULL || size <= 0) {
         cerr << "Wrong definition of array: " << type->name << "[" << size << "]" << endl;
+        return NULL;
+    } else if (context.typeOf(name->name) != NULL) {
+        cerr << "Multiple definition of " << name->name << endl;
         return NULL;
     } else {
         MyType *arr_ty = new MyType;
         arr_ty->type = MyType::ARRAY;
-        arr_ty->llvm_type = ArrayType::get(context.typeOf(type->name), size);
+        arr_ty->llvm_type = ArrayType::get(context.typeOf(type->name)->llvm_type, size);
         context.types()[name->name] = arr_ty;
-        return arr_ty->llvm_type;
+        return (Value *)arr_ty->llvm_type;
     }
 }
 
@@ -169,17 +173,17 @@ CG_FUN(IdentPr)
         cerr << "Err: Undeclared variable: " << ident << endl;
         return NULL;
     }
-    return LoadInst(context.locals()[name],
-                    "",
-                    false,
-                    context.currentBlock());
+    return new LoadInst(context.locals()[name->name],
+                        "",
+                        false,
+                        context.currentBlock());
 }
 
 CG_FUN(ArrayPr)
 {
 }
 
-CG_FUN(NumericalLiteral)
+CG_FUN(NumericLiteral)
 {
     cout << "Generating number: " << val << endl;
     return ConstantInt::get(Type::getInt64Ty(getGlobalContext()),
@@ -213,9 +217,9 @@ CG_FUN(BinaryOperation)
         case O:
             instr = Instruction::Or;
             break;            
-        case :
-            instr = Instruction::;
-            break;                        
+        // case :
+        //     instr = Instruction::;
+        //     break;                        
         default:
             cout << "Undefined operation: " << op << endl;
             return NULL;
@@ -253,7 +257,7 @@ CG_FUN(RetStatement)
 {
     cout << "Generating return code..." << endl;
     Value *ret = expr->codeGen(context);
-    context.setCurrentReturnValue(ret);
+    context.setCurrentRetValue(ret);
     return ret;
 }
 
@@ -274,10 +278,14 @@ CG_FUN(LoopStatement)
 {
 }
 
-CG_FUN(ForeeachStatement)
+CG_FUN(ForeachStatement)
 {
 }
 
 CG_FUN(Program)
+{
+}
+
+CG_FUN(FuncStatement)
 {
 }

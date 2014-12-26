@@ -28,9 +28,8 @@ typedef std::map<std::string, Value *> Local;
 
 class MyType {
   public:
-    enum { INT, ARRAY, CLASS } T;
+    enum { INT, ARRAY, CLASS } type;
     Type *llvm_type;
-    T type;
 };
 
 typedef std::map<std::string, MyType *> Types;
