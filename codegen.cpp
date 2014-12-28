@@ -57,7 +57,10 @@ void CGContext::generateCode(ASTNode *root)
 {
     cout << "Generating binary..." << endl;
 
-    root->codeGen(*this);
+    if (root->codeGen(*this) == nullptr) {
+        cerr << "Something goes wrong!" << endl;
+        return;
+    }
 
     cout << "Code generated." << endl << endl << endl;
     cout << "Module dump: " << endl << endl;
@@ -73,10 +76,10 @@ GenericValue CGContext::runCode()
     GenericValue v = ee->runFunction(mainFunction, noargs);
     cout << endl << "done" << endl;
     return v;
-    
 }
 
 #define CG_FUN(nodeType) Value *nodeType::codeGen(CGContext& context)
+#define CGR_FUN(nodeType) Value *nodeType::codeGenRef(CGContext& context)
 
 CG_FUN(Declaration)
 {
@@ -286,10 +289,13 @@ CG_FUN(BinaryOperation)
             break;            
         case O:
             instr = Instruction::Or;
-            break;            
+            break;
         // case :
         //     instr = Instruction::;
-        //     break;                        
+        //     break;
+        case NONE:
+            return a->codeGen(context);
+            break;
         default:
             cout << "Undefined operation: " << op << endl;
             return nullptr;
@@ -306,13 +312,22 @@ CG_FUN(UnaryOperation)
 {
     cout << "Generating unary operation: " << op << endl;
     BinaryOperation *bo;
-    bo->b = p;
-    bo->op = op;
-    NumericLiteral *a = new NumericLiteral;
+    NumericLiteral *a;
+    Value *ret;
     switch (op) {
         case BinaryOperation::S:
+            bo = new BinaryOperation;
+            a = new NumericLiteral;
+            bo->b = p;
+            bo->op = op;
             a->val = 0;
             bo->a = a;
+            ret = bo->codeGen(context);
+            delete a;
+            delete bo;
+            break;
+        case BinaryOperation::NONE:
+            ret = p->codeGen(context);
             break;
         default:
             cout << "Undefined operation: " << op << endl;
@@ -320,8 +335,8 @@ CG_FUN(UnaryOperation)
             return nullptr;
             break;
     }
-    delete a;
-    return bo->codeGen(context);
+    
+    return ret;
 }
 
 CG_FUN(FunCall)
@@ -355,6 +370,18 @@ CG_FUN(RetStatement)
 
 CG_FUN(AssignmentStatement)
 {
+    cout << "Generating assignment..." << endl;
+    Value *left = lhs->codeGenRef(context);
+    if (left == nullptr) {
+        cerr << "Semantic error: undeclared variable" << endl;
+        return nullptr;
+    }
+    if (rhs == nullptr) {
+        cerr << "Semantic error: non-existed right value" << endl;
+        return nullptr;
+    }
+    Value *right = rhs->codeGen(context);
+    return new StoreInst(right, left, false, context.currentBlock());
 }
 
 CG_FUN(IOStatement)
@@ -420,4 +447,24 @@ CG_FUN(Program)
 
 CG_FUN(FuncStatement)
 {
+}
+
+// CGR means generate the reference of a primary, rather load the value
+CGR_FUN(Primary)
+{
+    cerr << "Err: cannot be possible to generate reference from Primary" << endl;
+    return nullptr;
+}
+CGR_FUN(ArrayPr)
+{
+}
+CGR_FUN(IdentPr)
+{
+    string ident = name->name;
+    cout << "Generating identifier: " << ident << endl;
+    if (context.locals().find(ident) == context.locals().end()) {
+        cerr << "Err: Undeclared variable: " << ident << endl;
+        return nullptr;
+    }
+    return context.locals()[name->name];
 }

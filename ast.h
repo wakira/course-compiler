@@ -89,19 +89,22 @@ class Expression : public ASTNode {
 class Primary: public Expression {
   public:
     Expression *expr;
-    virtual llvm::Value* codeGen(CGContext& context); 
+    virtual llvm::Value* codeGen(CGContext& context);
+    virtual llvm::Value* codeGenRef(CGContext& context);
 };
 class IdentPr: public Primary {
   public:
     Identifier *name;
-    virtual llvm::Value* codeGen(CGContext& context); 
+    virtual llvm::Value* codeGen(CGContext& context);
+    virtual llvm::Value* codeGenRef(CGContext& context);    
 };
 
 class ArrayPr: public Primary {
   public:
     Primary *name;
     Expression *index;
-    virtual llvm::Value* codeGen(CGContext& context); 
+    virtual llvm::Value* codeGen(CGContext& context);
+    virtual llvm::Value* codeGenRef(CGContext& context);    
 };
 
 class NumericLiteral : public Primary {
