@@ -73,6 +73,7 @@ GenericValue CGContext::runCode()
     GenericValue v = ee->runFunction(mainFunction, noargs);
     cout << endl << "done" << endl;
     return v;
+    
 }
 
 #define CG_FUN(nodeType) Value *nodeType::codeGen(CGContext& context)
