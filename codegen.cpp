@@ -3,13 +3,14 @@
 
 #include "ast.h"
 #include "codegen.h"
+#include "present.h"
 
 using std::cerr;
 using std::cout;
 using std::endl;
 using std::vector;
 using std::string;
-
+using std::list;
 CGBlock::CGBlock(BasicBlock *_block, Value *_value):
         block(_block), retValue(_value) {}
 
@@ -145,7 +146,11 @@ static bool codeGen4VariableDeclarations(ElementList *varlist, CGContext &contex
             if (context.locals().find(decl->name->name) != context.locals().end()) {
                 return false;
             }
-            context.locals()[decl->name->name] = decl->codeGen(context);
+            Value *val = decl->codeGen(context);
+            if (val == nullptr) {
+                return false;
+            }
+            context.locals()[decl->name->name] = val;
         }
     }
     return true;
@@ -198,7 +203,10 @@ CG_FUN(FunctionDefinition)
             cout << "arg: " << name << endl;
             iter->setName(name);
 
-            context.locals()[name] = iter;
+            if (!codeGen4VariableDeclarations(args_var, context)) {
+                return nullptr;
+            }
+            new StoreInst(iter, context.locals()[name], false, context.currentBlock());
         }
     }
     // put the variable declarations into locals
@@ -209,6 +217,9 @@ CG_FUN(FunctionDefinition)
     Value *last = nullptr;
     if (functionBlock != nullptr) {
         last = functionBlock->codeGen(context);
+        if (last == nullptr) {
+            return nullptr;
+        }
     }
     if (retType == nullptr) {
         RetStatement *ret = new RetStatement;
@@ -218,6 +229,9 @@ CG_FUN(FunctionDefinition)
         last = ret->codeGen(context);
         delete zero;
         delete ret;
+        if (last == nullptr) {
+            return nullptr;
+        }
     }
 
     context.popBlock();
@@ -231,7 +245,7 @@ CG_FUN(Statement)
 CG_FUN(Expression)
 {
     cerr << "Not expected!" << endl;
-    return this->codeGen(context);
+    return nullptr;
 }
 
 CG_FUN(Primary)
@@ -301,9 +315,17 @@ CG_FUN(BinaryOperation)
             return nullptr;
             break;
     }
+    Value *va = a->codeGen(context);
+    if (va == nullptr) {
+        return nullptr;
+    }
+    Value *vb = b->codeGen(context);
+    if (vb == nullptr) {
+        return nullptr;
+    }
     return BinaryOperator::Create(instr,
-                                  a->codeGen(context),
-                                  b->codeGen(context),
+                                  va,
+                                  vb,
                                   "",
                                   context.currentBlock());
 }
@@ -324,7 +346,7 @@ CG_FUN(UnaryOperation)
             bo->a = a;
             ret = bo->codeGen(context);
             delete a;
-            delete bo;
+            delete bo;            
             break;
         case BinaryOperation::NONE:
             ret = p->codeGen(context);
@@ -341,6 +363,29 @@ CG_FUN(UnaryOperation)
 
 CG_FUN(FunCall)
 {
+    cout << "Generating function call..." << endl;
+    // get function by string temporarily
+    if (!IS_PANY(name, IdentPr)) {
+        cerr << "Err: Not implemented function calls except from a string name" << endl;
+        return nullptr;
+    }
+    string fname = ((IdentPr *)name)->name->name;
+    Function *function = context.module->getFunction(fname.c_str());
+    if (function == nullptr) {
+        cerr << "Semantic error: no such function" << fname << endl;
+        return nullptr;
+    }
+    vector<Value *> cargs;
+    for (list<ASTNode *>::iterator itr = args->elements.begin();
+         itr != args->elements.end(); ++itr) {
+        Value *val = (*itr)->codeGen(context);
+        if (val == nullptr) {
+            return nullptr;
+        }
+        val->dump();
+        cargs.push_back(val);
+    }
+    return CallInst::Create(function, cargs, "", context.currentBlock());
 }
 
 CG_FUN(DotOperation)
@@ -349,11 +394,16 @@ CG_FUN(DotOperation)
 
 CG_FUN(ElementList)
 {
+    Value *last;
     cout << "Generating list..." << endl;
     for (std::list<ASTNode *>::iterator itr = elements.begin();
          itr != elements.end(); ++itr) {
-        (*itr)->codeGen(context);
+        last = (*itr)->codeGen(context);
+        if (last == nullptr) {
+            return nullptr;
+        }
     }
+    return last;
 }
 
 CG_FUN(RetStatement)
@@ -363,6 +413,9 @@ CG_FUN(RetStatement)
         return ReturnInst::Create(getGlobalContext(), context.currentBlock());
     } else {
         Value *ret = expr->codeGen(context);
+        if (ret == nullptr) {
+            return nullptr;
+        }
         context.setCurrentRetValue(ret);
         return ReturnInst::Create(getGlobalContext(), ret, context.currentBlock());
     }
@@ -381,11 +434,27 @@ CG_FUN(AssignmentStatement)
         return nullptr;
     }
     Value *right = rhs->codeGen(context);
+    if (right == nullptr) {
+        return nullptr;
+    }
+    
     return new StoreInst(right, left, false, context.currentBlock());
 }
 
 CG_FUN(IOStatement)
 {
+    switch (op) {
+        case IN:
+            
+            break;
+        case OUT:
+            
+            break;
+        default:
+            cerr << "Err: unknown IO operator!" << endl;
+            return nullptr;
+            break;
+    }
 }
 
 CG_FUN(IfStatement)
@@ -423,6 +492,11 @@ CG_FUN(Program)
     BasicBlock *bblock = BasicBlock::Create(getGlobalContext(), "entry", function, 0);
     context.pushBlock(bblock);
 
+    // function, class and array definitions
+    if (definitions->codeGen(context) == nullptr) {
+        return nullptr;
+    }
+
     // Variable definitions
     if (!codeGen4VariableDeclarations(variableDeclarations, context)) {
         cerr << "Failed to generate main function." << endl;
@@ -432,12 +506,19 @@ CG_FUN(Program)
     Value *last = nullptr;
     if (programBlock != nullptr) {
         last = programBlock->codeGen(context);
+        if (last == nullptr) {
+            return nullptr;
+        }        
     }
     RetStatement *ret = new RetStatement;
     NumericLiteral *zero = new NumericLiteral;
     zero->val = 0;
     ret->expr = zero;
     last = ret->codeGen(context);
+    if (last == nullptr) {
+        return nullptr;
+    }
+    
     delete zero;
     delete ret;
 
@@ -447,6 +528,7 @@ CG_FUN(Program)
 
 CG_FUN(FuncStatement)
 {
+    return call->codeGen(context);
 }
 
 // CGR means generate the reference of a primary, rather load the value
