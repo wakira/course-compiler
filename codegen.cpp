@@ -17,6 +17,9 @@ CGBlock::CGBlock(BasicBlock *_block, Value *_value):
 CGContext::CGContext():
         module(new Module("main", getGlobalContext())) {}
 
+Function *printFn = nullptr;
+Function *scanFn = nullptr;
+
 Local &CGContext::locals()
 {
     return blocks.top()->locals;
@@ -254,8 +257,7 @@ CG_FUN(Expression)
 
 CG_FUN(Primary)
 {
-    cerr << "Err: Primary: cannot be here!" << endl;
-    return nullptr;
+    return expr->codeGen(context);
 }
 
 CG_FUN(IdentPr)
@@ -288,44 +290,82 @@ CG_FUN(BinaryOperation)
 {
     cout << "Generating binary operation: " << op << endl;
     Instruction::BinaryOps instr;
+    Instruction::OtherOps other;
+    CmpInst::Predicate pred;
+    Value *va, *vb;
     switch (op) {
         case P:
             instr = Instruction::Add;
+            goto math;
             break;
         case S:
             instr = Instruction::Sub;
+            goto math;
             break;
         case M:
             instr = Instruction::Mul;
+            goto math;
             break;
         case D:
             instr = Instruction::SDiv;
+            goto math;
             break;
         case MOD:
             instr = Instruction::SRem;
+            goto math;
+            break;
+        case E:
+            other = Instruction::ICmp;
+            pred = CmpInst::ICMP_EQ;
+            goto relation;
+            break;
+        case NE:
+            other = Instruction::ICmp;
+            pred = CmpInst::ICMP_NE;
+            goto relation;
+            break;
+        case L:
+            other = Instruction::ICmp;
+            pred = CmpInst::ICMP_SLT;
+            goto relation;
+            break;
+        case LE:
+            other = Instruction::ICmp;
+            pred = CmpInst::ICMP_SLE;
+            goto relation;
+            break;
+        case G:
+            other = Instruction::ICmp;
+            pred = CmpInst::ICMP_SGT;
+            goto relation;
+            break;
+        case GE:
+            other = Instruction::ICmp;
+            pred = CmpInst::ICMP_SGE;
+            goto relation;
             break;
         case A:
             instr = Instruction::And;
+            goto math;
             break;            
         case O:
             instr = Instruction::Or;
-            break;
-        // case :
-        //     instr = Instruction::;
-        //     break;
+            goto math;
+            break;       
         case NONE:
             return a->codeGen(context);
             break;
         default:
-            cout << "Undefined operation: " << op << endl;
+            cerr << "Undefined operation: " << op << endl;
             return nullptr;
             break;
     }
-    Value *va = a->codeGen(context);
+math:
+    va = a->codeGen(context);
     if (va == nullptr) {
         return nullptr;
     }
-    Value *vb = b->codeGen(context);
+    vb = b->codeGen(context);
     if (vb == nullptr) {
         return nullptr;
     }
@@ -334,6 +374,17 @@ CG_FUN(BinaryOperation)
                                   vb,
                                   "",
                                   context.currentBlock());
+relation:
+    va = a->codeGen(context);
+    if (va == nullptr) {
+        return nullptr;
+    }
+    vb = b->codeGen(context);
+    if (vb == nullptr) {
+        return nullptr;
+    }
+    CmpInst *result = CmpInst::Create(other, pred, va, vb, "cmptmp", context.currentBlock());
+    return result;
 }
 
 CG_FUN(UnaryOperation)
@@ -517,7 +568,10 @@ CG_FUN(IOStatement)
             var_ref = ConstantExpr::getGetElementPtr(_var, indices);
             args.push_back(var_ref);
             args.push_back(val);
-            fn = createScanfFunction(context);
+            if (scanFn == nullptr) {
+                scanFn = createScanfFunction(context);
+            }
+            fn = scanFn;
             call = CallInst::Create(fn, makeArrayRef(args), "", context.currentBlock());
             break;
             break;
@@ -541,7 +595,10 @@ CG_FUN(IOStatement)
             var_ref = ConstantExpr::getGetElementPtr(_var, indices);
             args.push_back(var_ref);
             args.push_back(val);
-            fn = createPrintfFunction(context);
+            if (printFn == nullptr) {
+                printFn = createPrintfFunction(context);
+            }
+            fn = printFn;
             call = CallInst::Create(fn, makeArrayRef(args), "", context.currentBlock());
             break;
         default:
