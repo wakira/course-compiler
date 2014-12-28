@@ -54,19 +54,19 @@ Value *CGContext::getCurrentRetValue()
     return blocks.top()->retValue;
 }
 
-void CGContext::generateCode(ASTNode *root)
+bool CGContext::generateCode(ASTNode *root)
 {
     cout << "Generating binary..." << endl;
 
     if (root->codeGen(*this) == nullptr) {
         cerr << "Something goes wrong!" << endl;
-        return;
+        return false;
     }
 
     cout << "Code generated." << endl << endl << endl;
     cout << "Module dump: " << endl << endl;
     module->dump();
-
+    return true;
 }
 
 GenericValue CGContext::runCode()
@@ -112,6 +112,8 @@ CG_FUN(VariableDeclaration)
 
 CG_FUN(Definition)
 {
+    cerr << "Err: Definition: Cannot be here! " << endl;
+    return nullptr;
 }
 
 CG_FUN(ArrayDefinition)
@@ -240,16 +242,20 @@ CG_FUN(FunctionDefinition)
 
 CG_FUN(Statement)
 {
+    cerr << "Err: Statement: cannot be here!" << endl;
+    return nullptr;
 }
 
 CG_FUN(Expression)
 {
-    cerr << "Not expected!" << endl;
+    cerr << "Err: Expression: cannot be here!" << endl;
     return nullptr;
 }
 
 CG_FUN(Primary)
 {
+    cerr << "Err: Primary: cannot be here!" << endl;
+    return nullptr;
 }
 
 CG_FUN(IdentPr)
@@ -441,14 +447,102 @@ CG_FUN(AssignmentStatement)
     return new StoreInst(right, left, false, context.currentBlock());
 }
 
+Function* createScanfFunction(CGContext& context)
+{
+    vector<Type *> scanf_arg_types;
+    scanf_arg_types.push_back(Type::getInt8PtrTy(getGlobalContext()));
+    FunctionType* scanf_type =
+            FunctionType::get(Type::getInt32Ty(getGlobalContext()),
+                              scanf_arg_types,
+                              true);
+    Function *func = Function::Create(scanf_type,
+                                      Function::ExternalLinkage,
+                                      Twine("scanf"),
+                                      context.module);
+    func->setCallingConv(llvm::CallingConv::C);
+    return func;
+}
+
+Function* createPrintfFunction(CGContext& context)
+{
+    std::vector<llvm::Type*> printf_arg_types;
+    printf_arg_types.push_back(llvm::Type::getInt8PtrTy(getGlobalContext())); //char*
+
+    llvm::FunctionType* printf_type =
+        llvm::FunctionType::get(
+            llvm::Type::getInt32Ty(getGlobalContext()), printf_arg_types, true);
+
+    llvm::Function *func = llvm::Function::Create(
+                printf_type, llvm::Function::ExternalLinkage,
+                llvm::Twine("printf"),
+                context.module
+           );
+    func->setCallingConv(llvm::CallingConv::C);
+    return func;
+}
+
 CG_FUN(IOStatement)
 {
+    vector<Type *> argTypes;
+    vector<string> argNames;
+    string format;
+    Value *val;
+    Type *type;
+    Constant *format_const;
+    GlobalVariable *_var;
+    Constant *zero;
+    vector<Constant *> indices;
+    Constant *var_ref;
+    vector<Value *> args;
+    Function *fn;
+    CallInst *call;
     switch (op) {
         case IN:
-            
+            cout << "Generating input statement..." << endl;
+            val = var->codeGenRef(context);
+            type = val->getType();
+            argTypes.push_back(type);
+            format = "%lld\n";
+            format_const = ConstantDataArray::getString(getGlobalContext(), format);
+            _var = new GlobalVariable(*context.module,
+                                     ArrayType::get(IntegerType::get(getGlobalContext(), 8),
+                                                    format.length() + 1),
+                                     true,
+                                     GlobalValue::PrivateLinkage,
+                                     format_const,
+                                     ".str");
+            zero = Constant::getNullValue(IntegerType::getInt32Ty(getGlobalContext()));
+            indices.push_back(zero);
+            indices.push_back(zero);
+            var_ref = ConstantExpr::getGetElementPtr(_var, indices);
+            args.push_back(var_ref);
+            args.push_back(val);
+            fn = createScanfFunction(context);
+            call = CallInst::Create(fn, makeArrayRef(args), "", context.currentBlock());
+            break;
             break;
         case OUT:
-            
+            cout << "Generating output statement..." << endl;
+            val = content->codeGen(context);
+            type = val->getType();
+            argTypes.push_back(type);
+            format = "%lld\n";
+            format_const = ConstantDataArray::getString(getGlobalContext(), format);
+            _var = new GlobalVariable(*context.module,
+                                     ArrayType::get(IntegerType::get(getGlobalContext(), 8),
+                                                    format.length() + 1),
+                                     true,
+                                     GlobalValue::PrivateLinkage,
+                                     format_const,
+                                     ".str");
+            zero = Constant::getNullValue(IntegerType::getInt32Ty(getGlobalContext()));
+            indices.push_back(zero);
+            indices.push_back(zero);
+            var_ref = ConstantExpr::getGetElementPtr(_var, indices);
+            args.push_back(var_ref);
+            args.push_back(val);
+            fn = createPrintfFunction(context);
+            call = CallInst::Create(fn, makeArrayRef(args), "", context.currentBlock());
             break;
         default:
             cerr << "Err: unknown IO operator!" << endl;

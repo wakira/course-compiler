@@ -83,7 +83,8 @@ int main(int argc, char **argv) {
         }
         InitializeNativeTarget();
         CGContext context;
-        context.generateCode(astRoot);
-        context.runCode();
+        if (context.generateCode(astRoot)) {
+            context.runCode();
+        }
 	return 0;
 }

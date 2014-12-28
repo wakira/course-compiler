@@ -50,7 +50,7 @@ class CGContext {
     Function *mainFunction;
     Module *module;
     CGContext();
-    void generateCode(ASTNode *root);
+    bool generateCode(ASTNode *root);
     GenericValue runCode();
     Local &locals();
     Types &types();
