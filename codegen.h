@@ -46,8 +46,8 @@ class CGBlock {
 class CGContext {
   private:
     std::stack<CGBlock *> blocks;
-    Function *mainFunction;
   public:
+    Function *mainFunction;
     Module *module;
     CGContext();
     void generateCode(ASTNode *root);

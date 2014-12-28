@@ -1,6 +1,8 @@
 #include <iostream>
 #include <cstring>
+
 #include "ast.h"
+#include "codegen.h"
 #include "present.h"
 #include "syntax.hpp"
 
@@ -78,7 +80,10 @@ int main(int argc, char **argv) {
 	}
         if (!parsed) {
             yyparse();
-            
         }
+        InitializeNativeTarget();
+        CGContext context;
+        context.generateCode(astRoot);
+        context.runCode();
 	return 0;
 }

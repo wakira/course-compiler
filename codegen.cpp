@@ -56,29 +56,12 @@ Value *CGContext::getCurrentRetValue()
 void CGContext::generateCode(ASTNode *root)
 {
     cout << "Generating binary..." << endl;
-    vector<Type *> argTypes;
-    FunctionType *ftype =
-            FunctionType::get(Type::getVoidTy(getGlobalContext()),
-                              makeArrayRef(argTypes),
-                              false);
-    mainFunction = Function::Create(ftype,
-                                    GlobalValue::InternalLinkage,
-                                    "main",
-                                    module);
-    BasicBlock *bblock = BasicBlock::Create(getGlobalContext(),
-                                            "entry",
-                                            mainFunction,
-                                            0);
 
-    pushBlock(bblock);
     root->codeGen(*this);
-    ReturnInst::Create(getGlobalContext(), bblock);
-    popBlock();
 
-    cout << "Finished generation." << endl;
-    PassManager pm;
-    pm.add(createPrintModulePass(outs()));
-    pm.run(*module);
+    cout << "Code generated." << endl;
+    module->dump();
+
 }
 
 GenericValue CGContext::runCode()
@@ -147,8 +130,80 @@ CG_FUN(ClassDefinition)
     
 }
 
+static bool codeGen4VariableDeclarations(ElementList *varlist, CGContext &context)
+{
+    if (varlist != NULL) {
+        for (std::list<ASTNode *>::iterator itr = varlist->elements.begin();
+             itr != varlist->elements.end(); ++itr) {
+            VariableDeclaration *decl = (VariableDeclaration *)*itr;
+            if (context.locals().find(decl->name->name) != context.locals().end()) {
+                return false;
+            }
+            context.locals()[decl->name->name] = decl->codeGen(context);
+        }
+    }
+    return true;
+}
+
 CG_FUN(FunctionDefinition)
 {
+    vector<Type *> argTypes;
+    /*
+      ToDo: Verify the correspondence of arguments and args_var.
+     */
+    ;
+    if (args_var != NULL) {
+        for (std::list<ASTNode *>::iterator itr = args_var->elements.begin();
+             itr != args_var->elements.end(); ++itr) {
+            VariableDeclaration *decl = (VariableDeclaration *)*itr;
+            argTypes.push_back(context.typeOf(decl->type->name)->llvm_type);
+        }
+    }
+    Type *retT = retType == NULL ? NULL : context.typeOf(retType->name)->llvm_type;
+    FunctionType *ftype = FunctionType::get(retT,
+                                            argTypes,
+                                            false);
+    Function *function = Function::Create(ftype,
+                                          GlobalValue::InternalLinkage,
+                                          name->name.c_str(),
+                                          context.module);
+
+    if (function->getName() != name->name) {
+        function->eraseFromParent();
+        function = context.module->getFunction(name->name);
+    }
+    // create block
+    BasicBlock *bblock = BasicBlock::Create(getGlobalContext(),
+                                            "entry",
+                                            function,
+                                            0);
+    context.pushBlock(bblock);
+
+    // set arguments and put into locals
+    if (args_var != NULL) {
+        Function::arg_iterator iter = function->arg_begin();
+        for (std::list<ASTNode *>::iterator itr = args_var->elements.begin();
+             itr != args_var->elements.end(); ++itr, ++iter) {
+            VariableDeclaration *decl = (VariableDeclaration *)*itr;
+            string name = decl->name->name;
+            cout << "arg: " << name << endl;
+            iter->setName(name);
+
+            context.locals()[name] = iter;
+        }
+    }
+    // put the variable declarations into locals
+    if (!codeGen4VariableDeclarations(variables, context)) {
+        return NULL;
+    }
+    // function body
+    Value *last = NULL;
+    if (functionBlock != NULL) {
+        last = functionBlock->codeGen(context);
+    }
+
+    context.popBlock();
+    return last;
 }
 
 CG_FUN(Statement)
@@ -234,6 +289,22 @@ CG_FUN(BinaryOperation)
 
 CG_FUN(UnaryOperation)
 {
+    cout << "Generating unary operation: " << op << endl;
+    BinaryOperation *bo;
+    bo->b = p;
+    bo->op = op;
+    NumericLiteral *a = new NumericLiteral;
+    switch (op) {
+        case BinaryOperation::S:
+            a->val = 0;
+            bo->a = a;
+            break;
+        default:
+            cout << "Undefined operation: " << op << endl;
+            return NULL;
+            break;
+    }
+    return bo->codeGen(context);
 }
 
 CG_FUN(FunCall)
@@ -263,7 +334,6 @@ CG_FUN(RetStatement)
 
 CG_FUN(AssignmentStatement)
 {
-    
 }
 
 CG_FUN(IOStatement)
@@ -284,6 +354,35 @@ CG_FUN(ForeachStatement)
 
 CG_FUN(Program)
 {
+    cout << "Generating program: " << name->name << endl;
+    // no args
+    vector<Type *> argTypes;
+    // no ret type
+    Type *retType = NULL;
+    FunctionType *ftype = FunctionType::get(retType, argTypes, false);
+    Function *function = Function::Create(ftype,
+                                          GlobalValue::InternalLinkage,
+                                          name->name.c_str(),
+                                          context.module);
+    // set as main function
+    context.mainFunction = function;
+    // push a new block
+    BasicBlock *bblock = BasicBlock::Create(getGlobalContext(), "entry", function, 0);
+    context.pushBlock(bblock);
+
+    // Variable definitions
+    if (!codeGen4VariableDeclarations(variableDeclarations, context)) {
+        cerr << "Failed to generate main function." << endl;
+        return NULL;
+    }
+    // main body of main function
+    Value *last = NULL;
+    if (programBlock != NULL) {
+        last = programBlock->codeGen(context);
+    }
+
+    context.popBlock();
+    return last;
 }
 
 CG_FUN(FuncStatement)
