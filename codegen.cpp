@@ -178,7 +178,9 @@ CG_FUN(FunctionDefinition)
         for (std::list<ASTNode *>::iterator itr = args_var->elements.begin();
              itr != args_var->elements.end(); ++itr) {
             VariableDeclaration *decl = (VariableDeclaration *)*itr;
-            argTypes.push_back(context.typeOf(decl->type->name)->llvm_type);
+            MyType *t = context.typeOf(decl->type->name);
+            Type *type = t->llvm_type;
+            argTypes.push_back(type);
         }
     }
     Type *retT = retType ==
@@ -202,7 +204,10 @@ CG_FUN(FunctionDefinition)
                                             "entry",
                                             function,
                                             0);
+    Local l = context.locals();
+    Types t = context.types();
     context.pushBlock(bblock);
+    context.types() = t;
     Value *last;
     // set arguments and put into locals
     if (args_var != nullptr) {
@@ -218,6 +223,10 @@ CG_FUN(FunctionDefinition)
                 return nullptr;
             }
             last = new StoreInst(iter, context.locals()[name], false, context.currentBlock());
+            if (last == nullptr) {
+                cerr << "Err: cannot load arguments!" << endl;
+                return nullptr;
+            }
         }
     }
     // put the variable declarations into locals
@@ -282,6 +291,33 @@ CG_FUN(IdentPr)
 
 CG_FUN(ArrayPr)
 {
+    cout << "Generating array primary..." << endl;
+    if (!IS_PANY(name, IdentPr)) {
+        cerr << "Err: Not implemented function calls except from a string name" << endl;
+        return nullptr;
+    }
+    string fname = ((IdentPr *)name)->name->name;
+    Value *i = index->codeGen(context);
+    if (i == nullptr) {
+        return nullptr;
+    }
+    if (context.locals().find(fname) == context.locals().end()) {
+        cerr << "Array not defined!" << endl;
+        return nullptr;
+    }
+    vector<Value *> idxlist;
+    Constant *zero = Constant::getNullValue(IntegerType::getInt32Ty(getGlobalContext()));
+    idxlist.push_back(zero);
+    idxlist.push_back(i);
+    Value * ptr = context.locals()[fname];
+    ptr = GetElementPtrInst::CreateInBounds(ptr,
+                                            makeArrayRef(idxlist), "gep.tmp", context.currentBlock());
+
+    ptr = new LoadInst(ptr,
+                       "",
+                       false,
+                       context.currentBlock());
+    return ptr;
 }
 
 CG_FUN(NumericLiteral)
@@ -440,9 +476,12 @@ CG_FUN(FunCall)
     }
     vector<Value *> cargs;
     if (args != nullptr) {
+        Function::const_arg_iterator it = function->getArgumentList().begin();
         for (list<ASTNode *>::iterator itr = args->elements.begin();
-             itr != args->elements.end(); ++itr) {
-            Value *val = (*itr)->codeGen(context);
+             itr != args->elements.end(); ++itr, ++it) {
+            Value *val;
+            val = (*itr)->codeGen(context);
+
             if (val == nullptr) {
                 return nullptr;
             }
@@ -770,9 +809,20 @@ CG_FUN(Program)
     BasicBlock *bblock = BasicBlock::Create(getGlobalContext(), "entry", function, 0);
     context.pushBlock(bblock);
 
-    // function, class and array definitions
-    if (definitions != nullptr && definitions->codeGen(context) == nullptr) {
-        return nullptr;
+    ElementList *funclist = new ElementList;
+    ElementList *typelist = new ElementList;
+    for (list<ASTNode *>::iterator itr = definitions->elements.begin();
+         itr != definitions->elements.end(); ++itr) {
+        if (IS_SAME_TYPE(**itr, *(new FunctionDefinition()))) {
+            cout << "funtion!" << endl;
+            funclist->elements.push_back(*itr);
+        } else {
+            typelist->elements.push_back(*itr);
+        }
+    }
+
+    // class and array definitions
+    if (typelist != nullptr && typelist->codeGen(context) == nullptr) {
     }
 
     // Variable definitions
@@ -780,6 +830,11 @@ CG_FUN(Program)
         cerr << "Failed to generate main function." << endl;
         return nullptr;
     }
+    
+    if (funclist != nullptr && funclist->codeGen(context) == nullptr) {
+
+    }
+    
     // main body of main function
     Value *last = nullptr;
     if (programBlock != nullptr) {
@@ -814,6 +869,29 @@ CGR_FUN(Primary)
 }
 CGR_FUN(ArrayPr)
 {
+    cout << "Generating array primary ref..." << endl;
+    if (!IS_PANY(name, IdentPr)) {
+        cerr << "Err: Not implemented function calls except from a string name" << endl;
+        return nullptr;
+    }
+    string fname = ((IdentPr *)name)->name->name;
+    Value *i = index->codeGen(context);
+    if (i == nullptr) {
+        return nullptr;
+    }
+    if (context.locals().find(fname) == context.locals().end()) {
+        cerr << "Array not defined!" << endl;
+        return nullptr;
+    }
+    vector<Value *> idxlist;
+    Constant *zero = Constant::getNullValue(IntegerType::getInt32Ty(getGlobalContext()));
+    idxlist.push_back(zero);
+    idxlist.push_back(i);
+    Value * ptr = context.locals()[fname];
+    ptr = GetElementPtrInst::CreateInBounds(ptr,
+                                            makeArrayRef(idxlist), "gep.tmp", context.currentBlock());
+
+    return ptr;
 }
 CGR_FUN(IdentPr)
 {
