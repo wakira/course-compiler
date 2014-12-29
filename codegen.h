@@ -5,6 +5,7 @@
 #include <map>
 #include <string>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Verifier.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/DerivedTypes.h>
@@ -56,7 +57,9 @@ class CGContext {
     Types &types();
     BasicBlock *currentBlock();
     void pushBlock(BasicBlock *block);
+    void push(BasicBlock *block);
     void popBlock();
+    void pop();
     MyType *typeOf(std::string);
     void setCurrentRetValue(Value *value);
     Value *getCurrentRetValue();

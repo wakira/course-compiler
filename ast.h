@@ -176,8 +176,8 @@ class IfStatement : public Statement {
 
 class LoopStatement: public Statement {
   public:
-    enum Type { WHILE, REPEAT };
-    Type type;
+    enum LoopType { WHILE, REPEAT };
+    LoopType type;
     Expression *cond;
     ElementList *stats;
     virtual llvm::Value* codeGen(CGContext& context); 
