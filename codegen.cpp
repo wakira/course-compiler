@@ -69,7 +69,6 @@ bool CGContext::generateCode(ASTNode *root)
 
     if (root->codeGen(*this) == nullptr) {
         cerr << "Something goes wrong!" << endl;
-        return false;
     }
 
     cout << "Code generated." << endl << endl << endl;
@@ -83,7 +82,7 @@ GenericValue CGContext::runCode()
     cout << endl << "running..." << endl << endl;
     ExecutionEngine *ee = EngineBuilder(module).create();
     vector<GenericValue> noargs;
-    GenericValue v = ee- >runFunction(mainFunction, noargs);
+    GenericValue v = ee->runFunction(mainFunction, noargs);
     
     cout << endl << "done" << endl;
     return v;
@@ -466,7 +465,7 @@ CG_FUN(ElementList)
          itr != elements.end(); ++itr) {
         last = (*itr)->codeGen(context);
         if (last == nullptr) {
-            return nullptr;
+            //            return nullptr;
         }
     }
     return last;
@@ -665,91 +664,88 @@ CG_FUN(IfStatement)
     function->getBasicBlockList().push_back(elseBlock);
     context.pushBlock(elseBlock, l);
     Value *elseValue = codeGen(context);
-    if (elseValue != nullptr) {
-        BranchInst::Create(mergeBlock, context.currentBlock());
-    } else {
-        function->getBasicBlockList().pop_back();
-    }
+    BranchInst::Create(mergeBlock, context.currentBlock());
     context.popBlock();
 
     function->getBasicBlockList().push_back(mergeBlock);
     context.pushBlock(mergeBlock, l);
-    PHINode *PN = PHINode::Create(Type::getInt64Ty(getGlobalContext()),
-                                  2,
-                                  "if.tmp",
-                                  context.currentBlock());
-    PN->addIncoming(thenValue, thenBlock);
-    if (elseValue != nullptr) {
-        PN->addIncoming(elseValue, elseBlock);
-    }
-    return PN;
+    // PHINode *PN = PHINode::Create(Type::getInt64Ty(getGlobalContext()),
+    //                               2,
+    //                               "if.tmp",
+    //                               context.currentBlock());
+    // PN->addIncoming(thenValue, thenBlock);
+    // if (elseValue != nullptr) {
+    //     PN->addIncoming(elseValue, elseBlock);
+    // }
+    return nullptr;
 }
 
 CG_FUN(LoopStatement)
 {
-    // cout << "Generating loop statement..." << endl;
-    // Function *function = context.currentBlock()->getParent();
-    // BasicBlock *condBlock = BasicBlock::Create(getGlobalContext(), "loop.cond", function);
-    // BasicBlock *loopBlock = BasicBlock::Create(getGlobalContext(), "loop.loop");
-    // BasicBlock *afterBlock = BasicBlock::Create(getGlobalContext(), "loop.after");
+    cout << "Generating loop statement..." << endl;
+    Local l = context.locals();
+    Function *function = context.currentBlock()->getParent();
+    BasicBlock *condBlock = BasicBlock::Create(getGlobalContext(), "loop.cond", function);
+    BasicBlock *loopBlock = BasicBlock::Create(getGlobalContext(), "loop.loop");
+    BasicBlock *afterBlock = BasicBlock::Create(getGlobalContext(), "loop.after");
+    if (type == WHILE) {
+        BranchInst::Create(condBlock, context.currentBlock());
+    } else {
+        BranchInst::Create(loopBlock, context.currentBlock());
+    }
+    context.popBlock();
 
-    // if (type == WHILE) {
-    //     BranchInst::Create(condBlock, context.currentBlock());
-    // } else {
-    //     BranchInst::Create(loopBlock, context.currentBlock());
-    // }
-    
-    // context.push(condBlock);
-    // Value *condValue = cond->codeGen(context);
-    // if (condValue == nullptr) {
-    //     context.pop();
-    //     function->getBasicBlockList().pop_back();
-    //     return nullptr;
-    // }
-    // if (type == WHILE) {
-    //     condValue = CmpInst::Create(Instruction::ICmp,
-    //                                 CmpInst::ICMP_NE,
-    //                                 condValue,
-    //                                 ConstantInt::get(Type::getInt64Ty(getGlobalContext()),
-    //                                                  0,
-    //                                                  true),
-    //                                 "cmptmp",
-    //                                 context.currentBlock());
-    // } else {
-    //     condValue = CmpInst::Create(Instruction::ICmp,
-    //                                 CmpInst::ICMP_EQ,
-    //                                 condValue,
-    //                                 ConstantInt::get(Type::getInt64Ty(getGlobalContext()),
-    //                                                  0,
-    //                                                  true),
-    //                                 "cmptmp",
-    //                                 context.currentBlock());
+    context.pushBlock(condBlock, l);
+    Value *condValue = cond->codeGen(context);
+    if (condValue == nullptr) {
+        context.popBlock();
+        function->getBasicBlockList().pop_back();
+        return nullptr;
+    }
+    if (type == WHILE) {
+        condValue = CmpInst::Create(Instruction::ICmp,
+                                    CmpInst::ICMP_NE,
+                                    condValue,
+                                    ConstantInt::get(Type::getInt64Ty(getGlobalContext()),
+                                                     0,
+                                                     true),
+                                    "cmptmp",
+                                    context.currentBlock());
+    } else {
+        condValue = CmpInst::Create(Instruction::ICmp,
+                                    CmpInst::ICMP_EQ,
+                                    condValue,
+                                    ConstantInt::get(Type::getInt64Ty(getGlobalContext()),
+                                                     0,
+                                                     true),
+                                    "cmptmp",
+                                    context.currentBlock());
         
-    // }
-    // BranchInst::Create(loopBlock, afterBlock, condValue, context.currentBlock());
-    // context.pop();
+    }
+    BranchInst::Create(loopBlock, afterBlock, condValue, context.currentBlock());
+    context.popBlock();
 
-    // function->getBasicBlockList().push_back(loopBlock);
-    // context.push(loopBlock);
-    // Value *loopValue = stats->codeGen(context);
-    // if (loopValue == nullptr) {
-    //     context.pop();
-    //     function->getBasicBlockList().pop_back();
-    //     function->getBasicBlockList().pop_back();
-    //     return nullptr;
-    // }
-    // BranchInst::Create(condBlock, context.currentBlock());
-    // context.pop();
+    function->getBasicBlockList().push_back(loopBlock);
+    context.pushBlock(loopBlock, l);
+    Value *loopValue = stats->codeGen(context);
+    if (loopValue == nullptr) {
+        // context.popBlock();
+        // function->getBasicBlockList().pop_back();
+        // function->getBasicBlockList().pop_back();
+        // return nullptr;
+    }
+    BranchInst::Create(condBlock, context.currentBlock());
+    context.popBlock();
 
-    // function->getBasicBlockList().push_back(afterBlock);
-    // context.push(afterBlock);
+    function->getBasicBlockList().push_back(afterBlock);
+    context.pushBlock(afterBlock, l);
     // PHINode *PN = PHINode::Create(Type::getVoidTy(getGlobalContext()), 2, "while.tmp", afterBlock);
     // PN->addIncoming(loopValue, loopBlock);
     // PN->addIncoming(condValue, condBlock);
-    // //    ReturnInst::Create(getGlobalContext(), PN, afterBlock);
+    //    ReturnInst::Create(getGlobalContext(), PN, afterBlock);
 
-    // //    context.pop();
-    // return PN;
+    //    context.pop();
+    return nullptr;
 }
 
 CG_FUN(ForeachStatement)
@@ -789,7 +785,7 @@ CG_FUN(Program)
     if (programBlock != nullptr) {
         last = programBlock->codeGen(context);
         if (last == nullptr) {
-            return nullptr;
+            // return nullptr;
         }        
     }
     RetStatement *ret = new RetStatement;
@@ -797,9 +793,6 @@ CG_FUN(Program)
     zero->val = 0;
     ret->expr = zero;
     last = ret->codeGen(context);
-    if (last == nullptr) {
-        return nullptr;
-    }
     
     delete zero;
     delete ret;

@@ -1,16 +1,10 @@
 program a()
-function kk()
 is
+var c is integer;
 begin
-return;
-end function kk;
-is
-  var c is integer;
-begin
-  c := 3;
-
-  print c;
-  if c == 3 then
-    print 4;
-  end if
+c := 3;
+while c != 7 do
+c := c+ 1;
+end while
+print c;
 end
