@@ -57,9 +57,8 @@ class CGContext {
     Types &types();
     BasicBlock *currentBlock();
     void pushBlock(BasicBlock *block);
-    void push(BasicBlock *block);
+    void pushBlock(BasicBlock *block, Local l);
     void popBlock();
-    void pop();
     MyType *typeOf(std::string);
     void setCurrentRetValue(Value *value);
     Value *getCurrentRetValue();

@@ -40,9 +40,8 @@ void CGContext::pushBlock(BasicBlock *block)
     blocks.push(new CGBlock(block, nullptr));
 }
 
-void CGContext::push(BasicBlock *block)
+void CGContext::pushBlock(BasicBlock *block, Local l)
 {
-    Local l = locals();
     blocks.push(new CGBlock(block, nullptr));
     locals() = l;
 }
@@ -52,15 +51,6 @@ void CGContext::popBlock()
     CGBlock *top = blocks.top();
     blocks.pop();
     delete top;
-}
-
-void CGContext::pop()
-{
-    Local l = locals();
-    CGBlock *top = blocks.top();
-    blocks.pop();
-    delete top;
-    locals() = l;
 }
 
 void CGContext::setCurrentRetValue(Value *value)
@@ -93,7 +83,8 @@ GenericValue CGContext::runCode()
     cout << endl << "running..." << endl << endl;
     ExecutionEngine *ee = EngineBuilder(module).create();
     vector<GenericValue> noargs;
-    GenericValue v = ee->runFunction(mainFunction, noargs);
+    GenericValue v = ee- >runFunction(mainFunction, noargs);
+    
     cout << endl << "done" << endl;
     return v;
 }
@@ -624,6 +615,7 @@ CG_FUN(IOStatement)
             return nullptr;
             break;
     }
+    return call;
 }
 
 CG_FUN(IfStatement)
@@ -653,32 +645,35 @@ CG_FUN(IfStatement)
                                                  true),
                                 "cmptmp",
                                 context.currentBlock());
+
+    Local l = context.locals();
     Function *function = context.currentBlock()->getParent();
+
     BasicBlock *thenBlock = BasicBlock::Create(getGlobalContext(), "if.then", function);
     BasicBlock *elseBlock = BasicBlock::Create(getGlobalContext(), "if.else");    
     BasicBlock *mergeBlock = BasicBlock::Create(getGlobalContext(), "if.cont");
     BranchInst::Create(thenBlock, elseBlock, condValue, context.currentBlock());
-
-    context.push(thenBlock);
+    context.popBlock();
+    context.pushBlock(thenBlock, l);
     Value *thenValue = block->codeGen(context);
     if (thenValue == nullptr) {
         return nullptr;
     }
     BranchInst::Create(mergeBlock, context.currentBlock());
-    context.pop();
-    
+    context.popBlock();
+
     function->getBasicBlockList().push_back(elseBlock);
-    context.push(elseBlock);
+    context.pushBlock(elseBlock, l);
     Value *elseValue = codeGen(context);
     if (elseValue != nullptr) {
         BranchInst::Create(mergeBlock, context.currentBlock());
     } else {
         function->getBasicBlockList().pop_back();
     }
-    context.pop();
+    context.popBlock();
 
     function->getBasicBlockList().push_back(mergeBlock);
-    context.push(mergeBlock);
+    context.pushBlock(mergeBlock, l);
     PHINode *PN = PHINode::Create(Type::getInt64Ty(getGlobalContext()),
                                   2,
                                   "if.tmp",
@@ -692,69 +687,69 @@ CG_FUN(IfStatement)
 
 CG_FUN(LoopStatement)
 {
-    cout << "Generating loop statement..." << endl;
-    Function *function = context.currentBlock()->getParent();
-    BasicBlock *condBlock = BasicBlock::Create(getGlobalContext(), "loop.cond", function);
-    BasicBlock *loopBlock = BasicBlock::Create(getGlobalContext(), "loop.loop");
-    BasicBlock *afterBlock = BasicBlock::Create(getGlobalContext(), "loop.after");
+    // cout << "Generating loop statement..." << endl;
+    // Function *function = context.currentBlock()->getParent();
+    // BasicBlock *condBlock = BasicBlock::Create(getGlobalContext(), "loop.cond", function);
+    // BasicBlock *loopBlock = BasicBlock::Create(getGlobalContext(), "loop.loop");
+    // BasicBlock *afterBlock = BasicBlock::Create(getGlobalContext(), "loop.after");
 
-    if (type == WHILE) {
-        BranchInst::Create(condBlock, context.currentBlock());
-    } else {
-        BranchInst::Create(loopBlock, context.currentBlock());
-    }
+    // if (type == WHILE) {
+    //     BranchInst::Create(condBlock, context.currentBlock());
+    // } else {
+    //     BranchInst::Create(loopBlock, context.currentBlock());
+    // }
     
-    context.push(condBlock);
-    Value *condValue = cond->codeGen(context);
-    if (condValue == nullptr) {
-        context.pop();
-        function->getBasicBlockList().pop_back();
-        return nullptr;
-    }
-    if (type == WHILE) {
-        condValue = CmpInst::Create(Instruction::ICmp,
-                                    CmpInst::ICMP_NE,
-                                    condValue,
-                                    ConstantInt::get(Type::getInt64Ty(getGlobalContext()),
-                                                     0,
-                                                     true),
-                                    "cmptmp",
-                                    context.currentBlock());
-    } else {
-        condValue = CmpInst::Create(Instruction::ICmp,
-                                    CmpInst::ICMP_EQ,
-                                    condValue,
-                                    ConstantInt::get(Type::getInt64Ty(getGlobalContext()),
-                                                     0,
-                                                     true),
-                                    "cmptmp",
-                                    context.currentBlock());
+    // context.push(condBlock);
+    // Value *condValue = cond->codeGen(context);
+    // if (condValue == nullptr) {
+    //     context.pop();
+    //     function->getBasicBlockList().pop_back();
+    //     return nullptr;
+    // }
+    // if (type == WHILE) {
+    //     condValue = CmpInst::Create(Instruction::ICmp,
+    //                                 CmpInst::ICMP_NE,
+    //                                 condValue,
+    //                                 ConstantInt::get(Type::getInt64Ty(getGlobalContext()),
+    //                                                  0,
+    //                                                  true),
+    //                                 "cmptmp",
+    //                                 context.currentBlock());
+    // } else {
+    //     condValue = CmpInst::Create(Instruction::ICmp,
+    //                                 CmpInst::ICMP_EQ,
+    //                                 condValue,
+    //                                 ConstantInt::get(Type::getInt64Ty(getGlobalContext()),
+    //                                                  0,
+    //                                                  true),
+    //                                 "cmptmp",
+    //                                 context.currentBlock());
         
-    }
-    BranchInst::Create(loopBlock, afterBlock, condValue, context.currentBlock());
-    context.pop();
+    // }
+    // BranchInst::Create(loopBlock, afterBlock, condValue, context.currentBlock());
+    // context.pop();
 
-    function->getBasicBlockList().push_back(loopBlock);
-    context.push(loopBlock);
-    Value *loopValue = stats->codeGen(context);
-    if (loopValue == nullptr) {
-        context.pop();
-        function->getBasicBlockList().pop_back();
-        function->getBasicBlockList().pop_back();
-        return nullptr;
-    }
-    BranchInst::Create(condBlock, context.currentBlock());
-    context.pop();
+    // function->getBasicBlockList().push_back(loopBlock);
+    // context.push(loopBlock);
+    // Value *loopValue = stats->codeGen(context);
+    // if (loopValue == nullptr) {
+    //     context.pop();
+    //     function->getBasicBlockList().pop_back();
+    //     function->getBasicBlockList().pop_back();
+    //     return nullptr;
+    // }
+    // BranchInst::Create(condBlock, context.currentBlock());
+    // context.pop();
 
-    function->getBasicBlockList().push_back(afterBlock);
-    context.push(afterBlock);
-    PHINode *PN = PHINode::Create(Type::getVoidTy(getGlobalContext()), 2, "while.tmp", afterBlock);
-    PN->addIncoming(loopValue, loopBlock);
-    PN->addIncoming(condValue, condBlock);
-    //    ReturnInst::Create(getGlobalContext(), PN, afterBlock);
+    // function->getBasicBlockList().push_back(afterBlock);
+    // context.push(afterBlock);
+    // PHINode *PN = PHINode::Create(Type::getVoidTy(getGlobalContext()), 2, "while.tmp", afterBlock);
+    // PN->addIncoming(loopValue, loopBlock);
+    // PN->addIncoming(condValue, condBlock);
+    // //    ReturnInst::Create(getGlobalContext(), PN, afterBlock);
 
-    //    context.pop();
-    return PN;
+    // //    context.pop();
+    // return PN;
 }
 
 CG_FUN(ForeachStatement)
