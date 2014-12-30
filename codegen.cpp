@@ -243,11 +243,8 @@ CG_FUN(FunctionDefinition)
     }
     if (retType == nullptr) {
         RetStatement *ret = new RetStatement;
-        NumericLiteral *zero = new NumericLiteral;
-        zero->val = 0;
-        ret->expr = zero;
+        ret->expr = nullptr;
         last = ret->codeGen(context);
-        delete zero;
         delete ret;
         if (last == nullptr) {
             return nullptr;
@@ -844,12 +841,9 @@ CG_FUN(Program)
         }        
     }
     RetStatement *ret = new RetStatement;
-    NumericLiteral *zero = new NumericLiteral;
-    zero->val = 0;
-    ret->expr = zero;
+    ret->expr = nullptr;
     last = ret->codeGen(context);
     
-    delete zero;
     delete ret;
 
     context.popBlock();
