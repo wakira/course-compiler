@@ -211,6 +211,9 @@ CG_FUN(FunctionDefinition)
     Value *last;
     // set arguments and put into locals
     if (args_var != nullptr) {
+        if (!codeGen4VariableDeclarations(args_var, context)) {
+            return nullptr;
+        }        
         Function::arg_iterator iter = function->arg_begin();
         for (std::list<ASTNode *>::iterator itr = args_var->elements.begin();
              itr != args_var->elements.end(); ++itr, ++iter) {
@@ -219,9 +222,6 @@ CG_FUN(FunctionDefinition)
             cout << "arg: " << name << endl;
             iter->setName(name);
 
-            if (!codeGen4VariableDeclarations(args_var, context)) {
-                return nullptr;
-            }
             last = new StoreInst(iter, context.locals()[name], false, context.currentBlock());
             if (last == nullptr) {
                 cerr << "Err: cannot load arguments!" << endl;
