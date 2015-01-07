@@ -597,7 +597,7 @@ CG_FUN(IOStatement)
             val = var->codeGenRef(context);
             type = val->getType();
             argTypes.push_back(type);
-            format = "%lld\n";
+            format = "%lld";
             format_const = ConstantDataArray::getString(getGlobalContext(), format);
             _var = new GlobalVariable(*context.module,
                                      ArrayType::get(IntegerType::get(getGlobalContext(), 8),
@@ -808,15 +808,17 @@ CG_FUN(Program)
 
     ElementList *funclist = new ElementList;
     ElementList *typelist = new ElementList;
-    for (list<ASTNode *>::iterator itr = definitions->elements.begin();
-         itr != definitions->elements.end(); ++itr) {
-        if (IS_SAME_TYPE(**itr, *(new FunctionDefinition()))) {
-            cout << "funtion!" << endl;
-            funclist->elements.push_back(*itr);
-        } else {
-            typelist->elements.push_back(*itr);
-        }
-    }
+	if (definitions != nullptr) {
+		for (list<ASTNode *>::iterator itr = definitions->elements.begin();
+			 itr != definitions->elements.end(); ++itr) {
+			if (IS_SAME_TYPE(**itr, *(new FunctionDefinition()))) {
+				cout << "funtion!" << endl;
+				funclist->elements.push_back(*itr);
+			} else {
+				typelist->elements.push_back(*itr);
+			}
+		}
+	}
 
     // class and array definitions
     if (typelist != nullptr && typelist->codeGen(context) == nullptr) {

@@ -159,7 +159,7 @@ func_def:
 		$$->arguments = $4;
 		$$->args_var = $6;
 		$$->retType = $7;
-                $$->variables = $9;
+		$$->variables = $9;
 		$$->functionBlock = $10;
 	};
 
