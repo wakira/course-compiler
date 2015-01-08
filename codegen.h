@@ -56,6 +56,7 @@ class CGContext {
     Local &locals();
     Types &types();
     BasicBlock *currentBlock();
+    CGBlock pop();
     void pushBlock(BasicBlock *block);
     void pushBlock(BasicBlock *block, Local l);
     void popBlock();

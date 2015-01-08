@@ -53,6 +53,12 @@ void CGContext::popBlock()
     delete top;
 }
 
+CGBlock CGContext::pop() {
+  CGBlock top = *(blocks.top());
+  popBlock();
+  return top;
+}
+
 void CGContext::setCurrentRetValue(Value *value)
 {
     blocks.top()->retValue = value;
@@ -238,9 +244,10 @@ CG_FUN(FunctionDefinition)
     if (functionBlock != nullptr) {
         last = functionBlock->codeGen(context);
         if (last == nullptr) {
-            return nullptr;
+	  //return nullptr;
         }
     }
+
     if (retType == nullptr) {
         RetStatement *ret = new RetStatement;
         ret->expr = nullptr;
@@ -688,7 +695,8 @@ CG_FUN(IfStatement)
     BasicBlock *elseBlock = BasicBlock::Create(getGlobalContext(), "if.else");    
     BasicBlock *mergeBlock = BasicBlock::Create(getGlobalContext(), "if.cont");
     BranchInst::Create(thenBlock, elseBlock, condValue, context.currentBlock());
-    context.popBlock();
+
+    CGBlock top = context.pop();
     context.pushBlock(thenBlock, l);
     Value *thenValue = block->codeGen(context);
     if (thenValue == nullptr) {
@@ -705,6 +713,7 @@ CG_FUN(IfStatement)
 
     function->getBasicBlockList().push_back(mergeBlock);
     context.pushBlock(mergeBlock, l);
+    //    context.popBlock();
     // PHINode *PN = PHINode::Create(Type::getInt64Ty(getGlobalContext()),
     //                               2,
     //                               "if.tmp",
