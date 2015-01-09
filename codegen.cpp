@@ -220,8 +220,7 @@ CG_FUN(FunctionDefinition)
                                           context.module);
 
     if (function->getName() != name->name) {
-        function->eraseFromParent();
-        function = context.module->getFunction(name->name);
+		semanticError("Cannot define two functions with the same name");
     }
     // create block
     BasicBlock *bblock = BasicBlock::Create(getGlobalContext(),
