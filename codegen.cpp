@@ -1,5 +1,7 @@
 #include <iostream>
 #include <vector>
+#include <cstdlib>
+#include <cassert>
 
 #include "ast.h"
 #include "codegen.h"
@@ -11,6 +13,12 @@ using std::endl;
 using std::vector;
 using std::string;
 using std::list;
+
+static void semanticError(string info) {
+	cerr << "Semantic Error: " << info << endl;
+	std::exit(1);
+}
+
 CGBlock::CGBlock(BasicBlock *_block, Value *_value):
         block(_block), retValue(_value) {}
 
@@ -75,6 +83,7 @@ bool CGContext::generateCode(ASTNode *root)
 
     if (root->codeGen(*this) == nullptr) {
         cerr << "Something goes wrong!" << endl;
+		return false;
     }
 
     cout << "Code generated." << endl << endl << endl;
@@ -99,6 +108,7 @@ GenericValue CGContext::runCode()
 
 CG_FUN(Declaration)
 {
+	assert(0); // Impossible
 }
 
 MyType *CGContext::typeOf(string name)
@@ -127,19 +137,16 @@ CG_FUN(VariableDeclaration)
 
 CG_FUN(Definition)
 {
-    cerr << "Err: Definition: Cannot be here! " << endl;
-    return nullptr;
+	assert(0); // Impossible
 }
 
 CG_FUN(ArrayDefinition)
 {
     cout << "Creating array definition for " << name->name << "<" << type->name << ">" << endl;
     if (context.typeOf(type->name) == nullptr || size <= 0) {
-        cerr << "Wrong definition of array: " << type->name << "[" << size << "]" << endl;
-        return nullptr;
+		semanticError("Wrong definition of array " + name->name);
     } else if (context.typeOf(name->name) != nullptr) {
-        cerr << "Multiple definition of " << name->name << endl;
-        return nullptr;
+		semanticError("Multiple definition of " + name->name);
     } else {
         MyType *arr_ty = new MyType;
         arr_ty->type = MyType::ARRAY;
@@ -151,7 +158,7 @@ CG_FUN(ArrayDefinition)
 
 CG_FUN(ClassDefinition)
 {
-    
+	assert(0); // Impossible
 }
 
 static bool codeGen4VariableDeclarations(ElementList *varlist, CGContext &context)
@@ -230,8 +237,7 @@ CG_FUN(FunctionDefinition)
 
             last = new StoreInst(iter, context.locals()[name], false, context.currentBlock());
             if (last == nullptr) {
-                cerr << "Err: cannot load arguments!" << endl;
-                return nullptr;
+				semanticError("Cannot load arguments!");
             }
         }
     }
@@ -264,14 +270,12 @@ CG_FUN(FunctionDefinition)
 
 CG_FUN(Statement)
 {
-    cerr << "Err: Statement: cannot be here!" << endl;
-    return nullptr;
+	assert(0); // Impossible
 }
 
 CG_FUN(Expression)
 {
-    cerr << "Err: Expression: cannot be here!" << endl;
-    return nullptr;
+	assert(0); // Impossible
 }
 
 CG_FUN(Primary)
@@ -284,8 +288,7 @@ CG_FUN(IdentPr)
     string ident = name->name;
     cout << "Generating identifier: " << ident << endl;
     if (context.locals().find(ident) == context.locals().end()) {
-        cerr << "Err: Undeclared variable: " << ident << endl;
-        return nullptr;
+		semanticError("Undeclared variable " + ident);
     }
     return new LoadInst(context.locals()[name->name],
                         "",
@@ -297,17 +300,15 @@ CG_FUN(ArrayPr)
 {
     cout << "Generating array primary..." << endl;
     if (!IS_PANY(name, IdentPr)) {
-        cerr << "Err: Not implemented function calls except from a string name" << endl;
-        return nullptr;
+		semanticError("Not implemented function calls except from a string name");
     }
     string fname = ((IdentPr *)name)->name->name;
     Value *i = index->codeGen(context);
     if (i == nullptr) {
-        return nullptr;
+		semanticError("Invalid array index");
     }
     if (context.locals().find(fname) == context.locals().end()) {
-        cerr << "Array not defined!" << endl;
-        return nullptr;
+		semanticError("Array not defined");
     }
     vector<Value *> idxlist;
     Constant *zero = Constant::getNullValue(IntegerType::getInt32Ty(getGlobalContext()));
@@ -402,8 +403,8 @@ CG_FUN(BinaryOperation)
             return a->codeGen(context);
             break;
         default:
-            cerr << "Undefined operation: " << op << endl;
-            return nullptr;
+            cerr << "Fatal Error: Undefined operation " << op << endl;
+			assert(0); // Impossible operation
             break;
     }
 math:
@@ -455,9 +456,8 @@ CG_FUN(UnaryOperation)
             ret = p->codeGen(context);
             break;
         default:
-            cout << "Undefined operation: " << op << endl;
-            delete a;
-            return nullptr;
+            cerr << "Fatal Error: Undefined operation " << op << endl;
+			assert(0); // Impossible operation
             break;
     }
     
@@ -469,14 +469,12 @@ CG_FUN(FunCall)
     cout << "Generating function call..." << endl;
     // get function by string temporarily
     if (!IS_PANY(name, IdentPr)) {
-        cerr << "Err: Not implemented function calls except from a string name" << endl;
-        return nullptr;
+		semanticError("Not implemented function calls except from a string name");
     }
     string fname = ((IdentPr *)name)->name->name;
     Function *function = context.module->getFunction(fname.c_str());
     if (function == nullptr) {
-        cerr << "Semantic error: no such function" << fname << endl;
-        return nullptr;
+		semanticError("No such function named " + fname);
     }
     vector<Value *> cargs;
     if (args != nullptr) {
@@ -498,6 +496,7 @@ CG_FUN(FunCall)
 
 CG_FUN(DotOperation)
 {
+	assert(0); // Not implemented yet
 }
 
 CG_FUN(ElementList)
@@ -534,12 +533,10 @@ CG_FUN(AssignmentStatement)
     cout << "Generating assignment..." << endl;
     Value *left = lhs->codeGenRef(context);
     if (left == nullptr) {
-        cerr << "Semantic error: undeclared variable" << endl;
-        return nullptr;
+		semanticError("Undeclared variable");
     }
     if (rhs == nullptr) {
-        cerr << "Semantic error: non-existed right value" << endl;
-        return nullptr;
+		semanticError("Non-existed right value");
     }
     Value *right = rhs->codeGen(context);
     if (right == nullptr) {
@@ -654,7 +651,7 @@ CG_FUN(IOStatement)
             break;
         default:
             cerr << "Err: unknown IO operator!" << endl;
-            return nullptr;
+			assert(0); // Impossible!
             break;
     }
     return call;
@@ -700,7 +697,7 @@ CG_FUN(IfStatement)
     context.pushBlock(thenBlock, l);
     Value *thenValue = block->codeGen(context);
     if (thenValue == nullptr) {
-        return nullptr;
+      //return nullptr;
     }
     BranchInst::Create(mergeBlock, context.currentBlock());
     context.popBlock();
@@ -869,15 +866,13 @@ CG_FUN(FuncStatement)
 // CGR means generate the reference of a primary, rather load the value
 CGR_FUN(Primary)
 {
-    cerr << "Err: cannot be possible to generate reference from Primary" << endl;
-    return nullptr;
+	semanticError("Cannot generate reference from Primary");
 }
 CGR_FUN(ArrayPr)
 {
     cout << "Generating array primary ref..." << endl;
     if (!IS_PANY(name, IdentPr)) {
-        cerr << "Err: Not implemented function calls except from a string name" << endl;
-        return nullptr;
+		semanticError("Not implemented function calls except from a string name");
     }
     string fname = ((IdentPr *)name)->name->name;
     Value *i = index->codeGen(context);
@@ -885,8 +880,7 @@ CGR_FUN(ArrayPr)
         return nullptr;
     }
     if (context.locals().find(fname) == context.locals().end()) {
-        cerr << "Array not defined!" << endl;
-        return nullptr;
+		semanticError("Array not defined");
     }
     vector<Value *> idxlist;
     Constant *zero = Constant::getNullValue(IntegerType::getInt32Ty(getGlobalContext()));
@@ -903,8 +897,7 @@ CGR_FUN(IdentPr)
     string ident = name->name;
     cout << "Generating identifier: " << ident << endl;
     if (context.locals().find(ident) == context.locals().end()) {
-        cerr << "Err: Undeclared variable: " << ident << endl;
-        return nullptr;
+		semanticError("Undeclared variable " + ident);
     }
     return context.locals()[name->name];
 }
