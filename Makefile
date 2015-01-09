@@ -1,6 +1,6 @@
 LLVMCONF = llvm-config
 CPPFLAGS = `$(LLVMCONF) --cppflags` -std=c++11 -g
-LDFLAGS = `$(LLVMCONF) --ldflags` -std=c++11 -g -ldl -lz -lncurses -rdynamic -pthread
+LDFLAGS = `$(LLVMCONF) --ldflags` -std=c++11 -g -ldl -lz -lncurses -lboost_program_options -rdynamic -pthread
 LIBS = `$(LLVMCONF) --libs` 
 
 all: present.o codegen.o
