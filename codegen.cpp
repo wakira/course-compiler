@@ -426,6 +426,9 @@ math:
     if (vb == nullptr) {
         return nullptr;
     }
+	if (va->getType()->getTypeID() != vb->getType()->getTypeID()) {
+		semanticError("Math operation on incompatible types");
+	}
     return BinaryOperator::Create(instr,
                                   va,
                                   vb,
@@ -566,8 +569,11 @@ CG_FUN(AssignmentStatement)
     }
     Value *right = rhs->codeGen(context);
     if (right == nullptr) {
-        return nullptr;
+		semanticError("Error generating rhs of assignment");
     }
+	if (left->getType()->getTypeID() != right->getType()->getTypeID()) {
+		semanticError("Assignment on incompatible types");
+	}
     
     return new StoreInst(right, left, false, context.currentBlock());
 }
