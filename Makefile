@@ -12,4 +12,4 @@ codegen.o: codegen.cpp codegen.h
 present.o: present.h present.cpp
 	g++ $(CPPFLAGS) -c present.cpp
 clean:
-	rm main syntax.cpp syntax.hpp tokens.cpp present.o codegen.o
+	rm ml syntax.cpp syntax.hpp tokens.cpp present.o codegen.o
