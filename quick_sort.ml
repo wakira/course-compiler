@@ -4,18 +4,18 @@ program quickSort()
         var arr is Array;
         var low is integer;
         var high is integer;
+        return Array;
     is
         var i is integer;
         var j is integer;
+        var k is integer;
         var tmp is integer;
         var pivot is integer;
+        var tmpArr is Array;
     begin
-        if high - low == 0 then
-            print arr[low];
-        end
         i := low ;
         j := high ;
-        pivot := arr [ ( low + high )/2];
+        pivot := arr [( low + high )/2];
         while i <= j do
             while arr [ i ] < pivot do
                 i := i + 1 ;
@@ -32,25 +32,39 @@ program quickSort()
             end if
         end while
         if low < j then
-            qsort(arr, low, j);
+            tmpArr := qsort(arr, low, j);
+            k := low;
+            while k <= j do
+               arr[k] := tmpArr[k];
+               k := k + 1;
+            end while
         end if
         if i < high then
-            qsort(arr, i, high);
+            tmpArr := qsort(arr, i, high);
+            k := i;
+            while k <= high do
+                arr[k] := tmpArr[k];
+                k := k + 1;
+            end while
         end if
+        return arr;
 end function qsort;
 is
     var arr is Array;
     var n is integer;
     var i is integer;
 begin
-    n := 5;
+    input n;
     i := 0;
     while i < n do
-        arr [ i ] := i;
-        i := i + 1 ;
+        input arr[i];
+        i := i + 1;
     end while
-    qsort( arr , 0 , n - 1 );
+    arr := qsort( arr , 0 , n - 1 );
+    i := 0;
+    while i < n do
+        print arr[i];
+        i := i + 1;
+    end while
+
 end
-
-
-
