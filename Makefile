@@ -6,7 +6,7 @@ LIBS = `$(LLVMCONF) --libs`
 all: present.o codegen.o
 	bison -d -o syntax.cpp syntax.y
 	lex -o tokens.cpp tokens.l
-	g++ $(LDFLAGS) $(CPPFLAGS) -o main syntax.cpp tokens.cpp main.cpp present.o codegen.o $(LIBS)
+	g++ $(LDFLAGS) $(CPPFLAGS) -o ml syntax.cpp tokens.cpp main.cpp present.o codegen.o $(LIBS)
 codegen.o: codegen.cpp codegen.h
 	g++ $(CPPFLAGS) -c codegen.cpp
 present.o: present.h present.cpp
