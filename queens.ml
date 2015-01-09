@@ -46,10 +46,5 @@ is
     var arr is Array;
     var i is integer;
 begin
-    i := 0;
-    while i < 8 do
-        arr[i] := -1;
-        i := i + 1;
-    end while
     print place(arr, 0);
 end
