@@ -479,18 +479,26 @@ CG_FUN(FunCall)
     if (function == nullptr) {
 		semanticError("No such function named " + fname);
     }
+	auto func_type = function->getFunctionType();
+	if (func_type->getNumParams() != args->elements.size()) {
+		semanticError("Function call with incorrect number of arguments");
+	}
     vector<Value *> cargs;
     if (args != nullptr) {
-        Function::const_arg_iterator it = function->getArgumentList().begin();
+		auto it = func_type->param_begin();
         for (list<ASTNode *>::iterator itr = args->elements.begin();
              itr != args->elements.end(); ++itr, ++it) {
             Value *val;
             val = (*itr)->codeGen(context);
-
+			auto actual_arg_type_id = val->getType()->getTypeID();
+			auto expected_type_id = (*it)->getTypeID();
+			if (actual_arg_type_id != expected_type_id) {
+				semanticError("Function call with incorrect argument type");
+			}
             if (val == nullptr) {
                 return nullptr;
             }
-            val->dump();
+            //val->dump();
             cargs.push_back(val);
         }
     }
