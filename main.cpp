@@ -1,5 +1,8 @@
 #include <iostream>
+#include <string>
 #include <cstring>
+#include <cstdlib>
+#include <boost/program_options.hpp>
 
 #include "ast.h"
 #include "codegen.h"
@@ -10,16 +13,47 @@
 
 using namespace std;
 extern Program *astRoot;
+extern FILE *yyin;
 extern int yyparse();
 extern int yylex(void);
 
 int main(int argc, char **argv) {
-        bool parsed = false;
-	if (argc == 2) {
-		if (strcmp(argv[1], "l") == 0) {
-			int type;
-			while ((type = yylex())) {
-				switch (type) {
+	using namespace boost::program_options;
+	auto desc = options_description{"options"};
+	desc.add_options()
+		("lexical,l", "show lexical analysis result")
+		("syntax,s", "show lexical analysis result")
+		("help,h", "display help message")
+		("file", value<std::string>(), "filename of source code")
+		;
+
+	auto vm = variables_map{};
+	store(command_line_parser{argc, argv}
+			.options(desc)
+			.positional(
+				positional_options_description{}
+				.add("file", 1))
+			.run() , vm);
+	notify(vm);
+
+	if (vm.count("help")) {
+		cout << desc;
+		return 0;
+	}
+	if (!vm.count("file")) {
+		cerr << "Must specify input file" << endl;
+		return 1;
+	}
+	string filename = vm["file"].as<std::string>();
+	yyin = fopen(filename.c_str(), "r");
+	if (!fopen) {
+		cerr << "Cannot open file " << filename << endl;
+		return 1;
+	}
+	if (vm.count("lexical")) {
+		int type;
+		while ((type = yylex())) {
+			switch (type) {
 				PRTTOK(PLUS);
 				PRTTOK(MINUS);
 				PRTTOK(MUL);
@@ -68,23 +102,21 @@ int main(int argc, char **argv) {
 				PRTTOK(IN);
 				PRTTOK(INT);
 				PRTTOK(IDENTIFIER);
-				}
 			}
-
-		} else if (strcmp(argv[1], "s") == 0) {
-			yyparse();
-                        parsed = true;
-			string ast = ast_string(astRoot);
-			cout << ast << endl;
-		} 
+		}
+		return 0;
+	} else if (vm.count("syntax")) {
+		yyparse();
+		string ast = ast_string(astRoot);
+		cout << ast << endl;
+		return 0;
 	}
-        if (!parsed) {
-            yyparse();
-        }
-        InitializeNativeTarget();
-        CGContext context;
-        if (context.generateCode(astRoot)) {
-            context.runCode();
-        }
+
+	yyparse();
+	InitializeNativeTarget();
+	CGContext context;
+	if (context.generateCode(astRoot)) {
+		context.runCode();
+	}
 	return 0;
 }
