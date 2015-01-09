@@ -183,14 +183,17 @@ static bool codeGen4VariableDeclarations(ElementList *varlist, CGContext &contex
 CG_FUN(FunctionDefinition)
 {
     vector<Type *> argTypes;
-    /*
-      ToDo: Verify the correspondence of arguments and args_var.
-     */
-    ;
     if (args_var != nullptr) {
-        for (std::list<ASTNode *>::iterator itr = args_var->elements.begin();
-             itr != args_var->elements.end(); ++itr) {
+		if (arguments == nullptr || arguments->elements.size() != args_var->elements.size()) {
+			semanticError("Function arguments doesn't match its arguments type declaration");
+		}
+        for (std::list<ASTNode *>::iterator itr = args_var->elements.begin(), itr_ck = arguments->elements.begin();
+             itr != args_var->elements.end(); ++itr, ++itr_ck) {
+			IdentPr *arg_check = (IdentPr *)*itr_ck;
             VariableDeclaration *decl = (VariableDeclaration *)*itr;
+			if (decl->name->name != arg_check->name->name) {
+				semanticError("Function arguments doesn't match its arguments type declaration");
+			}
             MyType *t = context.typeOf(decl->type->name);
             Type *type = t->llvm_type;
             argTypes.push_back(type);
