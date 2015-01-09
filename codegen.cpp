@@ -192,10 +192,12 @@ CG_FUN(FunctionDefinition)
 			IdentPr *arg_check = (IdentPr *)*itr_ck;
             VariableDeclaration *decl = (VariableDeclaration *)*itr;
 			// Check if there's local variable declaration with same name as arguments
-			for (auto loc_val : variables->elements) {
-				IdentPr *loc = (IdentPr*)loc_val;
-				if (loc->name->name == decl->name->name) {
-					semanticError("Function local variable and arguments conflicts");
+			if (variables != nullptr) {
+				for (auto loc_val : variables->elements) {
+					IdentPr *loc = (IdentPr*)loc_val;
+					if (loc->name->name == decl->name->name) {
+						semanticError("Function local variable and arguments conflicts");
+					}
 				}
 			}
 			// Check if argument list and their type declaration match
@@ -571,9 +573,6 @@ CG_FUN(AssignmentStatement)
     if (right == nullptr) {
 		semanticError("Error generating rhs of assignment");
     }
-	if (left->getType()->getTypeID() != right->getType()->getTypeID()) {
-		semanticError("Assignment on incompatible types");
-	}
     
     return new StoreInst(right, left, false, context.currentBlock());
 }
