@@ -191,6 +191,14 @@ CG_FUN(FunctionDefinition)
              itr != args_var->elements.end(); ++itr, ++itr_ck) {
 			IdentPr *arg_check = (IdentPr *)*itr_ck;
             VariableDeclaration *decl = (VariableDeclaration *)*itr;
+			// Check if there's local variable declaration with same name as arguments
+			for (auto loc_val : variables->elements) {
+				IdentPr *loc = (IdentPr*)loc_val;
+				if (loc->name->name == decl->name->name) {
+					semanticError("Function local variable and arguments conflicts");
+				}
+			}
+			// Check if argument list and their type declaration match
 			if (decl->name->name != arg_check->name->name) {
 				semanticError("Function arguments doesn't match its arguments type declaration");
 			}
@@ -527,13 +535,21 @@ CG_FUN(ElementList)
 CG_FUN(RetStatement)
 {
     cout << "Generating return code..." << endl;
+	Function *func = context.currentBlock()->getParent();
+	auto expected_type_id = func->getReturnType()->getTypeID();
     if (expr == nullptr) {
+		if (expected_type_id != Type::VoidTyID) {
+			semanticError("Return statement requires expression on non-void function");
+		}
         return ReturnInst::Create(getGlobalContext(), context.currentBlock());
     } else {
         Value *ret = expr->codeGen(context);
         if (ret == nullptr) {
-            return nullptr;
+			semanticError("Failed to generate return expression");
         }
+		if (ret->getType()->getTypeID() != expected_type_id) {
+			semanticError("Return expression has invalid type");
+		}
         context.setCurrentRetValue(ret);
         return ReturnInst::Create(getGlobalContext(), ret, context.currentBlock());
     }
