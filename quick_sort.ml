@@ -48,7 +48,7 @@ program quickSort()
             end while
         end if
         return arr;
-end function qsort;
+    end function qsort;
 is
     var arr is Array;
     var n is integer;
