@@ -113,6 +113,9 @@ int main(int argc, char **argv) {
 	}
 
 	yyparse();
+	if (!astRoot) {
+		return 1;
+	}
 	InitializeNativeTarget();
 	CGContext context;
 	if (context.generateCode(astRoot)) {
